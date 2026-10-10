@@ -1,0 +1,687 @@
+/* 内政 strategy map HUD + dialogs. Shared theme tokens live in src/style.css. */
+
+.sg-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --mtop: 5.2em;
+  --mstep: 2.87em;
+}
+.sg-hud > * {
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------- top bar */
+.sg-top {
+  position: absolute;
+  left: max(0.6em, env(safe-area-inset-left));
+  top: 0.6em;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.35em 0.8em 0.35em 0.4em;
+  background: linear-gradient(180deg, rgba(48, 28, 16, 0.94), rgba(24, 12, 6, 0.92));
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  max-width: calc(100vw - 1.2em);
+  flex-wrap: wrap;
+}
+.sg-top .portrait.sm {
+  width: 2.9em;
+}
+.sg-topinfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.sg-date {
+  font-size: 1.25em;
+  color: var(--gold-hi);
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 2px #000;
+}
+.sg-lord {
+  font-size: 0.9em;
+  color: var(--ink-dim);
+}
+.sg-res {
+  display: flex;
+  gap: 0.9em;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.sg-res > span {
+  white-space: nowrap;
+}
+.sg-res i {
+  font-style: normal;
+  display: inline-block;
+  font-family: var(--font-title);
+  color: #2a170c;
+  background: var(--gold);
+  border-radius: 3px;
+  padding: 0 0.25em;
+  margin-right: 0.3em;
+  font-size: 0.85em;
+}
+.sg-res .red i {
+  background: var(--red-hi);
+}
+
+/* ---------------------------------------------------------------- command menu */
+.sg-menu {
+  position: absolute;
+  left: max(0.6em, env(safe-area-inset-left));
+  top: var(--mtop);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+.sg-mbtn,
+.sg-sbtn {
+  appearance: none;
+  font: inherit;
+  color: var(--ink);
+  position: relative;
+  width: 5.4em;
+  height: 2.4em;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #6b3a1c, #3d1f0e);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.25), 0 2px 5px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  letter-spacing: 0.25em;
+  text-shadow: 0 1px 1px #000;
+  font-size: 1.05em;
+  padding: 0 0 0 0.2em;
+  transition: filter 0.12s, transform 0.06s;
+}
+.sg-mbtn:hover,
+.sg-sbtn:hover {
+  filter: brightness(1.3);
+}
+.sg-mbtn:active,
+.sg-sbtn:active {
+  transform: translateY(1px);
+}
+.sg-mbtn:disabled,
+.sg-sbtn:disabled {
+  filter: grayscale(0.85) brightness(0.55);
+  cursor: default;
+}
+.sg-mbtn.on {
+  border-color: var(--gold-hi);
+  box-shadow: 0 0 0 1px var(--gold-hi), 0 0 12px rgba(246, 217, 138, 0.55);
+  background: linear-gradient(180deg, #a8402e, #6a1e14);
+}
+.sg-mbtn.rest {
+  background: linear-gradient(180deg, #2e5a7a, #16324a);
+}
+.sg-mbtn u {
+  position: absolute;
+  right: 0.25em;
+  bottom: 0.05em;
+  font-size: 0.55em;
+  text-decoration: none;
+  color: var(--ink-mute);
+  letter-spacing: 0;
+}
+.sg-sub {
+  position: absolute;
+  top: calc(var(--mtop) + var(--i) * var(--mstep) - 0.4em);
+  left: calc(max(0.6em, env(safe-area-inset-left)) + 6.6em);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.4em;
+  background: var(--lacquer);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  animation: sg-slide 0.14s ease;
+}
+.sg-sbtn {
+  width: 6.4em;
+  height: 2.2em;
+  font-size: 1em;
+  text-align: left;
+  padding-left: 0.8em;
+  background: linear-gradient(180deg, #5a3218, #331a0b);
+}
+.sg-sbtn i {
+  position: absolute;
+  right: 0.45em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  font-size: 0.7em;
+  letter-spacing: 0;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 1.4em;
+  text-align: center;
+  color: var(--gold);
+}
+.sg-sbtn i.mute {
+  color: var(--ink-mute);
+  border-radius: 3px;
+}
+@keyframes sg-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+/* ---------------------------------------------------------------- city panel */
+.sg-cpanel {
+  position: absolute;
+  right: max(0.6em, env(safe-area-inset-right));
+  top: 0.6em;
+  width: min(25em, 46vw);
+  max-height: calc(100% - 4.5em);
+  display: flex;
+  flex-direction: column;
+  padding: 0.6em 0.7em;
+  background: linear-gradient(180deg, rgba(255, 220, 150, 0.06), rgba(0, 0, 0, 0) 40%), var(--lacquer);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: var(--shadow), inset 0 0 0 3px rgba(0, 0, 0, 0.35), inset 0 0 0 4px rgba(217, 180, 90, 0.18);
+  font-size: 0.92em;
+  animation: fadein 0.15s ease;
+}
+.sg-cpanel-tab {
+  position: absolute;
+  right: max(0.6em, env(safe-area-inset-right));
+  top: 0.6em;
+  appearance: none;
+  font: inherit;
+  color: var(--gold-hi);
+  background: var(--lacquer);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4em 0.7em;
+  cursor: pointer;
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+.sg-chead {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.35em;
+}
+.sg-cname {
+  font-size: 1.45em;
+  color: var(--gold-hi);
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 2px #000;
+}
+.sg-x {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.75em;
+  padding: 0.15em 0.4em;
+}
+.sg-rel {
+  font-size: 0.85em;
+  margin-bottom: 0.3em;
+}
+.sg-cstats {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 0.12em 0.6em;
+  font-size: 0.95em;
+  margin-bottom: 0.4em;
+}
+.sg-cstats > span {
+  color: var(--gold);
+}
+.sg-cstats > b {
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sg-devbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin-bottom: 0.3em;
+}
+.sg-devbar > span {
+  color: var(--gold);
+}
+.sg-devbar > b {
+  font-weight: normal;
+  min-width: 2.5em;
+  text-align: right;
+}
+.sg-ctabs {
+  margin-bottom: 0.3em;
+}
+.sg-ctabs > button {
+  padding: 0.2em 0.7em;
+}
+.sg-cgens {
+  flex: 1;
+  min-height: 4em;
+  overflow: auto;
+}
+.sg-cfoot {
+  margin-top: 0.4em;
+  font-size: 0.85em;
+  display: flex;
+  justify-content: flex-end;
+}
+.sg-empty {
+  padding: 1em;
+  text-align: center;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+/* general tables */
+table.grid tr.sg-acted td {
+  color: var(--ink-mute);
+}
+table.grid tr.sg-acted td:first-child::after {
+  content: '·已出动';
+  font-size: 0.75em;
+  margin-left: 0.2em;
+}
+.sg-gtable td {
+  font-variant-numeric: tabular-nums;
+}
+.sg-gname {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.sg-badge {
+  font-style: normal;
+  font-size: 0.7em;
+  border-radius: 2px;
+  padding: 0 0.2em;
+  line-height: 1.35;
+  color: #1a0d05;
+}
+.sg-badge.lord {
+  background: var(--gold-hi);
+}
+.sg-badge.gov {
+  background: #c9a36a;
+}
+.sg-badge.adv {
+  background: #7fb3d9;
+}
+.sg-check {
+  color: var(--gold-hi);
+  width: 1.4em;
+}
+.sg-info {
+  appearance: none;
+  font: inherit;
+  font-size: 0.8em;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0 0.35em;
+}
+.sg-link {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--gold);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  margin-left: 0.8em;
+}
+
+/* ---------------------------------------------------------------- log */
+.sg-log {
+  position: absolute;
+  left: max(0.6em, env(safe-area-inset-left));
+  bottom: max(0.6em, env(safe-area-inset-bottom));
+  width: min(30em, 52vw);
+  padding: 0.35em 0.7em;
+  background: rgba(16, 8, 4, 0.78);
+  border: 1px solid rgba(217, 180, 90, 0.35);
+  border-radius: 5px;
+  font-size: 0.85em;
+  line-height: 1.5;
+  cursor: pointer;
+  max-height: 5.2em;
+  overflow: hidden;
+}
+.sg-log > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sg-log.open {
+  max-height: 60vh;
+  overflow-y: auto;
+  width: min(36em, 70vw);
+  z-index: 5;
+}
+.sg-log.open > div {
+  white-space: normal;
+}
+
+/* ---------------------------------------------------------------- zoom */
+.sg-zoom {
+  position: absolute;
+  right: max(0.6em, env(safe-area-inset-right));
+  bottom: max(0.6em, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 0.3em;
+}
+.sg-zoom > button {
+  appearance: none;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(28, 16, 10, 0.88);
+  color: var(--gold-hi);
+  font-size: 1em;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+/* ---------------------------------------------------------------- map tooltip / pick */
+.sg-tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 1.6em));
+  background: rgba(16, 8, 4, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.15em 0.6em;
+  font-size: 0.9em;
+  white-space: nowrap;
+  pointer-events: none !important;
+}
+.sg-pickbar {
+  position: absolute;
+  left: 50%;
+  top: 0.6em;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.45em 0.6em 0.45em 1.1em;
+  background: linear-gradient(180deg, #a8402e, #5a1810);
+  border: 1px solid var(--gold-hi);
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(246, 217, 138, 0.35), var(--shadow);
+  font-size: 1.05em;
+  z-index: 6;
+  max-width: 94vw;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: pop 0.18s ease;
+}
+.sg-pickcities {
+  display: flex;
+  gap: 0.3em;
+  flex-wrap: wrap;
+}
+.sg-pickcities > button {
+  appearance: none;
+  font: inherit;
+  font-size: 0.85em;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--ink);
+  border: 1px solid rgba(246, 217, 138, 0.5);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0.1em 0.5em;
+}
+.sg-pickcities > button:hover {
+  background: rgba(246, 217, 138, 0.25);
+}
+.sg-busy {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  padding: 0.5em 2em;
+  font-size: 1.5em;
+  letter-spacing: 0.4em;
+  color: var(--gold-hi);
+  background: rgba(16, 8, 4, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-shadow: 0 2px 3px #000;
+  animation: sg-breathe 1.6s ease-in-out infinite;
+  pointer-events: all !important;
+}
+@keyframes sg-breathe {
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ---------------------------------------------------------------- dialogs */
+.sg-court {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6vh;
+  background: #000 center / cover no-repeat;
+}
+.sg-court::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55));
+}
+.sg-court > * {
+  position: relative;
+}
+.sg-court > .sg-picker {
+  align-self: center;
+}
+.sg-say {
+  width: min(38em, 92vw);
+}
+.sg-saytext {
+  line-height: 1.75;
+  white-space: pre-wrap;
+  font-size: 1.05em;
+  min-width: 12em;
+}
+.sg-event .sg-saytext {
+  font-family: var(--font-title);
+  font-size: 1.15em;
+}
+.sg-eventname {
+  font-size: 2em;
+  text-align: center;
+  color: var(--gold-hi);
+  letter-spacing: 0.3em;
+  padding: 0.5em 0;
+  text-shadow: 0 3px 4px #000;
+}
+.sg-picker {
+  width: min(44em, 94vw);
+  max-height: 90vh;
+}
+.sg-wide {
+  width: min(56em, 96vw);
+}
+.sg-scroll {
+  overflow: auto;
+  max-height: min(58vh, 30em);
+  min-height: 4em;
+}
+.sg-prompt {
+  margin-bottom: 0.5em;
+  color: var(--ink-dim);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.sg-foot {
+  margin-top: 0.5em;
+}
+.sg-cmdtitle {
+  display: inline-flex;
+  align-items: center;
+}
+.sg-titleart {
+  height: 1.6em;
+  image-rendering: auto;
+}
+.sg-cmdtitle .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.sg-icon {
+  width: 1.8em;
+  height: 1.8em;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 0.35em;
+}
+.sg-icon.empty {
+  display: inline-block;
+  border: 1px dashed rgba(217, 180, 90, 0.3);
+  border-radius: 3px;
+}
+.sg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  padding: 0.6em;
+}
+.sg-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.sg-assign input[type='range'] {
+  accent-color: var(--gold);
+}
+
+/* general card */
+.sg-gcard {
+  width: min(40em, 94vw);
+}
+.sg-gcard-body {
+  display: flex;
+  gap: 1.2em;
+  flex-wrap: wrap;
+}
+.sg-stat2 {
+  grid-template-columns: auto 1fr auto 1fr;
+}
+.sg-bars {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.3em 0.6em;
+  align-items: center;
+  margin-top: 0.4em;
+  font-size: 0.9em;
+}
+.sg-bars > span:nth-child(3n + 1) {
+  color: var(--gold);
+}
+.sg-slots {
+  display: flex;
+  gap: 0.6em;
+  margin-top: 0.7em;
+  flex-wrap: wrap;
+}
+.sg-slot {
+  flex: 1;
+  min-width: 8em;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.3em 0.5em;
+  border: 1px solid rgba(217, 180, 90, 0.25);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.sg-skills {
+  margin-top: 0.6em;
+  font-size: 0.9em;
+  line-height: 1.7;
+}
+.sg-skills b {
+  color: var(--gold);
+  font-weight: normal;
+  margin-right: 0.6em;
+}
+
+/* report */
+.sg-report {
+  width: min(36em, 94vw);
+}
+.sg-report-head {
+  display: flex;
+  gap: 1.2em;
+  flex-wrap: wrap;
+  margin-bottom: 0.6em;
+}
+.sg-report-list {
+  padding: 0.5em 0.8em;
+  line-height: 1.75;
+}
+
+/* ---------------------------------------------------------------- small screens (phone landscape) */
+@media (max-height: 480px) {
+  .sg-hud {
+    --mtop: 4.2em;
+    --mstep: 2.51em;
+  }
+  .sg-top {
+    padding: 0.2em 0.5em 0.2em 0.25em;
+    top: 0.3em;
+  }
+  .sg-top .portrait.sm {
+    width: 2.3em;
+  }
+  .sg-date {
+    font-size: 1.05em;
+  }
+  .sg-menu {
+    gap: 0.25em;
+  }
+  .sg-mbtn {
+    height: 2.15em;
+    width: 4.8em;
+  }
+  .sg-sub {
+    left: calc(max(0.6em, env(safe-area-inset-left)) + 5.8em);
+  }
+  .sg-cpanel {
+    top: 0.3em;
+    max-height: calc(100% - 3.4em);
+    width: min(23em, 44vw);
+  }
+  .sg-log {
+    width: min(24em, 40vw);
+  }
+  .sg-scroll {
+    max-height: 52vh;
+  }
+}

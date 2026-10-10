@@ -1,15 +1,18 @@
-// 百人战 public API (placeholder — implemented by the battle module).
+// 百人战 public API.
+//   runBattle(setup)  — real-time battle scene (pushed over the current scene)
+//   autoBattle(setup) — instant numeric resolution (AI vs AI, 委任)
+// Neither function mutates G; the caller applies the BattleResult.
+import { core } from '../../engine/core';
 import type { BattleResult, BattleSetup } from '../../game/contracts';
+import { BattleScene } from './scene';
+export { autoBattle } from './auto';
 
 export async function runBattle(setup: BattleSetup): Promise<BattleResult> {
-  return autoBattle(setup);
-}
-
-export function autoBattle(setup: BattleSetup): BattleResult {
-  const l = setup.left.soldiers, r = setup.right.soldiers;
-  return {
-    winner: l >= r ? 'left' : 'right',
-    left: { soldiersLeft: Math.max(0, l - r / 2) | 0, hp: 50, mp: 0, fled: false, defeated: l < r, kills: 0 },
-    right: { soldiersLeft: Math.max(0, r - l / 2) | 0, hp: 50, mp: 0, fled: false, defeated: r <= l, kills: 0 },
-  };
+  let resolve!: (r: BattleResult) => void;
+  const done = new Promise<BattleResult>((r) => (resolve = r));
+  const scene = new BattleScene(setup, resolve);
+  await core.push(scene);
+  const res = await done;
+  await core.pop();
+  return res;
 }

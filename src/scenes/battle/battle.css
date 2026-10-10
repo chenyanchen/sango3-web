@@ -1,0 +1,685 @@
+/* 百人战 HUD */
+.bt-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-title);
+  font-size: 1.8em;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+}
+.bt-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --bt-btn-h: 2.5em;
+}
+.bt-hud button {
+  pointer-events: auto;
+  font: inherit;
+}
+
+/* ---------------------------------------------------------- top */
+.bt-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6em;
+  padding: max(0.4em, env(safe-area-inset-top)) max(0.5em, env(safe-area-inset-right)) 0 max(0.5em, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.bt-card {
+  display: flex;
+  gap: 0.5em;
+  align-items: stretch;
+  background: linear-gradient(180deg, rgba(10, 16, 40, 0.86), rgba(6, 10, 26, 0.72));
+  border: 1px solid rgba(217, 180, 90, 0.55);
+  border-radius: 6px;
+  padding: 0.35em 0.5em 0.3em 0.35em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  min-width: 17em;
+  max-width: 24em;
+  flex: 0 1 22em;
+  pointer-events: auto;
+}
+.bt-card.right {
+  flex-direction: row-reverse;
+  padding: 0.35em 0.35em 0.3em 0.5em;
+}
+.bt-card.left {
+  border-left: 3px solid #4a9cff;
+}
+.bt-card.right {
+  border-right: 3px solid #ff4a3a;
+}
+.bt-card.dead .pf {
+  filter: grayscale(1) brightness(0.5);
+}
+.bt-card .pf .portrait {
+  width: 4.2em;
+  height: 100%;
+  aspect-ratio: auto;
+  min-height: 5em;
+}
+.bt-card .info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18em;
+  min-width: 0;
+}
+.bt-card .nm {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  line-height: 1.1;
+}
+.bt-card.right .nm,
+.bt-card.right .row2 {
+  flex-direction: row-reverse;
+}
+.bt-card .nm b {
+  font-size: 1.25em;
+  color: var(--gold-hi);
+  text-shadow: 0 1px 2px #000;
+  font-weight: normal;
+}
+.bt-card .lv {
+  font-size: 0.8em;
+  color: var(--ink-dim);
+}
+.bt-card .row2 {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.85em;
+  line-height: 1;
+}
+.bt-card .tg {
+  font-style: normal;
+  font-size: 0.85em;
+  width: 1.35em;
+  height: 1.35em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #7a5a2a, #3a2410);
+  border: 1px solid rgba(217, 180, 90, 0.7);
+  color: #fff3cc;
+  flex: none;
+}
+.bt-card .bar {
+  flex: 1;
+  height: 0.65em;
+}
+.bt-card .bar.hp > i {
+  background: linear-gradient(180deg, #ff7a6a, #c4241a);
+  transition: width 0.25s;
+}
+.bt-card.right .bar > i {
+  left: auto;
+  right: 0;
+}
+.bt-card .num {
+  min-width: 2.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bt-card.right .num {
+  text-align: left;
+}
+.bt-card .num.big {
+  font-size: 1.15em;
+  color: #fff;
+  min-width: 0;
+}
+.bt-card .st {
+  color: var(--gold);
+  margin: 0 0.3em;
+}
+.bt-card .sol .mute:last-child {
+  margin-left: auto;
+  font-size: 0.9em;
+}
+.bt-card.right .sol .mute:last-child {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.bt-sword {
+  position: relative;
+  height: 1.35em;
+  margin-top: 0.1em;
+}
+.bt-sword img {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  image-rendering: auto;
+}
+.bt-sword .frame {
+  left: 0;
+}
+.bt-sword .fill {
+  right: auto;
+  left: 19.5%;
+  width: 79.5%;
+  height: 100%;
+  object-fit: fill;
+}
+.bt-sword.r .frame {
+  left: auto;
+  right: 0;
+}
+.bt-sword.r .fill {
+  left: auto;
+  right: 19.5%;
+}
+.bt-sword.full .fill {
+  animation: bt-flash 0.5s steps(2) infinite;
+  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #ffd27a);
+}
+@keyframes bt-flash {
+  50% {
+    filter: brightness(1.8) drop-shadow(0 0 6px #fff);
+  }
+}
+
+.bt-mid {
+  flex: 0 1 26em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3em;
+  min-width: 9em;
+}
+.bt-timer {
+  font-family: var(--font-title);
+  font-size: 1.9em;
+  line-height: 1;
+  min-width: 2.2em;
+  text-align: center;
+  padding: 0.12em 0.4em 0.05em;
+  color: #ffe9a8;
+  background: radial-gradient(circle at 50% 30%, rgba(80, 40, 10, 0.95), rgba(20, 8, 2, 0.9));
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  text-shadow: 0 2px 2px #000;
+  font-variant-numeric: tabular-nums;
+}
+.bt-timer.low {
+  color: #ff7a5a;
+  animation: bt-pulse 1s infinite;
+}
+@keyframes bt-pulse {
+  50% {
+    transform: scale(1.1);
+  }
+}
+.bt-radar {
+  width: 100%;
+  height: 3.2em;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(217, 180, 90, 0.45);
+  border-radius: 4px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------- banners */
+.bt-banners {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4em;
+  pointer-events: none;
+}
+.bt-banner {
+  font-family: var(--font-title);
+  font-size: 2.6em;
+  letter-spacing: 0.25em;
+  color: #fff4d0;
+  text-shadow: 0 0 10px rgba(255, 180, 60, 0.9), 0 3px 3px #000, 0 0 2px #000;
+  padding: 0.1em 1.4em;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.55) 20%, rgba(0, 0, 0, 0.55) 80%, transparent);
+  animation: bt-banner 1.9s ease forwards;
+  white-space: nowrap;
+}
+.bt-banner.vs {
+  font-size: 2.2em;
+}
+.bt-banner.go {
+  font-size: 3.4em;
+  color: #ffe08a;
+}
+.bt-banner.skill {
+  font-size: 3em;
+  color: #fff;
+  text-shadow: 0 0 14px #6cf, 0 0 30px #39f, 0 3px 3px #000;
+  animation-duration: 1.6s;
+}
+.bt-banner.skill.enemy {
+  text-shadow: 0 0 14px #f86, 0 0 30px #f42, 0 3px 3px #000;
+}
+.bt-banner.charge {
+  color: #ffb08a;
+}
+@keyframes bt-banner {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+    letter-spacing: 0.8em;
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+    letter-spacing: 0.25em;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* ---------------------------------------------------------- side controls */
+.bt-side {
+  position: absolute;
+  right: max(0.5em, env(safe-area-inset-right));
+  bottom: calc(var(--bt-btn-h) + 1.4em + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 0.3em;
+}
+.bt-mini {
+  appearance: none;
+  min-width: 2.6em;
+  height: 2.1em;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 180, 90, 0.5);
+  background: rgba(10, 8, 6, 0.7);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.9em;
+}
+.bt-mini.on {
+  color: #1a0f04;
+  background: linear-gradient(180deg, #f6d98a, #c99a3a);
+}
+
+/* ---------------------------------------------------------- bottom bar */
+.bt-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5em;
+  padding: 0.4em max(0.5em, env(safe-area-inset-right)) max(0.45em, env(safe-area-inset-bottom)) max(0.5em, env(safe-area-inset-left));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.35) 70%, transparent);
+  pointer-events: none;
+}
+.bt-bottom.locked .bt-sel,
+.bt-bottom.locked .bt-orders,
+.bt-bottom.locked .bt-global {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.bt-sel,
+.bt-orders,
+.bt-global {
+  display: flex;
+  gap: 0.25em;
+  pointer-events: auto;
+  flex-wrap: nowrap;
+}
+.bt-sel {
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.2em;
+  border-radius: 6px;
+  border: 1px solid rgba(217, 180, 90, 0.3);
+}
+.bt-tab {
+  appearance: none;
+  height: var(--bt-btn-h);
+  min-width: 3.1em;
+  padding: 0 0.55em;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+}
+.bt-tab small {
+  font-size: 0.68em;
+  color: var(--ink-mute);
+}
+.bt-tab.on {
+  color: #fff;
+  background: linear-gradient(180deg, #2c6ac4, #173a74);
+  border-color: #7cc0ff;
+}
+.bt-tab.on small {
+  color: #bfe0ff;
+}
+.bt-tab.gen.on {
+  background: linear-gradient(180deg, #9a6a1c, #5a3a0c);
+  border-color: var(--gold-hi);
+}
+.bt-btn {
+  appearance: none;
+  height: var(--bt-btn-h);
+  min-width: 3.3em;
+  padding: 0 0.7em;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #6b3a1c, #3d1f0e);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.25), 0 2px 4px rgba(0, 0, 0, 0.5);
+  color: var(--ink);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 1px #000;
+  white-space: nowrap;
+}
+.bt-btn:hover {
+  filter: brightness(1.2);
+}
+.bt-btn:active {
+  transform: translateY(1px);
+}
+.bt-btn:disabled {
+  filter: grayscale(0.9) brightness(0.6);
+}
+.bt-btn.red {
+  background: linear-gradient(180deg, #b8402e, #6a1a10);
+  border-color: var(--gold);
+}
+.bt-btn.red.on {
+  box-shadow: 0 0 0 1px var(--gold-hi), 0 0 12px rgba(255, 120, 60, 0.7);
+}
+.bt-btn.dark {
+  background: linear-gradient(180deg, #3a3a44, #1c1c22);
+}
+.bt-global {
+  margin-left: auto;
+}
+.bt-skill {
+  appearance: none;
+  pointer-events: auto;
+  position: relative;
+  width: 4.4em;
+  height: 4.4em;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background:
+    radial-gradient(circle, rgba(30, 14, 6, 0.95) 55%, transparent 56%),
+    conic-gradient(#ffcf5a var(--g), rgba(255, 255, 255, 0.12) 0);
+  color: var(--ink-dim);
+  font-family: var(--font-title);
+  font-size: 1em;
+  cursor: pointer;
+  flex: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+.bt-skill span {
+  display: block;
+  width: 2.2em;
+  margin: auto;
+  line-height: 1.1;
+  font-size: 1.05em;
+}
+.bt-skill.ready {
+  color: #fff3c8;
+}
+.bt-skill.ready.can {
+  color: #fff;
+  border-color: #fff2b0;
+  animation: bt-glow 0.9s ease-in-out infinite;
+}
+@keyframes bt-glow {
+  50% {
+    box-shadow: 0 0 6px #fff, 0 0 22px #ffb84a, 0 0 40px rgba(255, 140, 40, 0.7);
+  }
+}
+
+/* ---------------------------------------------------------- skills menu */
+.bt-skills {
+  position: absolute;
+  right: max(0.5em, env(safe-area-inset-right));
+  bottom: calc(5.4em + env(safe-area-inset-bottom));
+  width: min(26em, 92vw);
+  max-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(14, 18, 44, 0.96), rgba(6, 8, 22, 0.96));
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: pop 0.15s ease;
+}
+.bt-skills .hd {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.45em 0.7em;
+  border-bottom: 1px solid var(--line);
+}
+.bt-skills .hd .kai {
+  font-size: 1.25em;
+  color: var(--gold-hi);
+}
+.bt-skills .x {
+  margin-left: auto;
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 1.1em;
+  cursor: pointer;
+  min-width: 2em;
+  min-height: 2em;
+}
+.bt-skills .empty {
+  padding: 0.5em 0.8em;
+}
+.bt-skills .list {
+  overflow-y: auto;
+  padding: 0.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+.bt-skills .sk {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 1.4em 5.2em 1fr auto;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 2.5em;
+  padding: 0.2em 0.6em;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 180, 90, 0.35);
+  background: linear-gradient(180deg, rgba(90, 50, 20, 0.6), rgba(40, 20, 8, 0.6));
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.bt-skills .sk:hover {
+  border-color: var(--gold-hi);
+}
+.bt-skills .sk.off {
+  opacity: 0.45;
+  cursor: default;
+}
+.bt-skills .sk .k {
+  color: var(--ink-mute);
+  font-size: 0.8em;
+}
+.bt-skills .sk .n {
+  font-family: var(--font-title);
+  font-size: 1.15em;
+  color: var(--gold-hi);
+}
+.bt-skills .sk .sp {
+  font-size: 0.8em;
+  color: var(--ink-dim);
+}
+.bt-skills .sk .mp {
+  font-size: 0.85em;
+  color: #8fc0ff;
+}
+
+/* ---------------------------------------------------------- confirm / result */
+.bt-confirm,
+.bt-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  animation: fadein 0.2s ease;
+}
+.bt-confirm .panel {
+  max-width: 90vw;
+}
+.bt-result .panel {
+  min-width: min(34em, 94vw);
+  text-align: center;
+  animation: pop 0.25s ease;
+}
+.bt-result .ttl {
+  font-size: 3.2em;
+  letter-spacing: 0.3em;
+  line-height: 1.2;
+}
+.bt-result .ttl.win {
+  color: #ffd86a;
+  text-shadow: 0 0 18px rgba(255, 190, 60, 0.8), 0 3px 3px #000;
+}
+.bt-result .ttl.lose {
+  color: #c8c8d0;
+  text-shadow: 0 0 14px rgba(120, 140, 255, 0.5), 0 3px 3px #000;
+}
+.bt-result .ttl.draw {
+  color: #e8dcc0;
+}
+.bt-result .reason {
+  color: var(--ink-dim);
+  margin-bottom: 0.8em;
+}
+.bt-result .vs {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  justify-content: center;
+}
+.bt-result table.grid td,
+.bt-result table.grid th {
+  text-align: center;
+  padding: 0.35em 0.9em;
+  font-size: 1.05em;
+}
+.bt-result table.grid th {
+  position: static;
+  background: none;
+  color: var(--gold);
+  border-bottom: 1px solid rgba(217, 180, 90, 0.15);
+}
+.bt-result td.l {
+  color: #a8d0ff;
+}
+.bt-result td.r {
+  color: #ffb8a8;
+}
+
+/* ---------------------------------------------------------- touch / small screens */
+@media (pointer: coarse), (max-height: 520px) {
+  .bt-hud {
+    --bt-btn-h: max(2.8em, 40px);
+  }
+  .bt-card {
+    min-width: 0;
+    flex-basis: 17em;
+    padding: 0.2em 0.35em;
+  }
+  .bt-card .pf .portrait {
+    width: 3.4em;
+    min-height: 4em;
+  }
+  .bt-card .sol .mute:last-child {
+    display: none;
+  }
+  .bt-timer {
+    font-size: 1.5em;
+  }
+  .bt-radar {
+    height: 2.6em;
+  }
+  .bt-btn {
+    min-width: 2.9em;
+    padding: 0 0.5em;
+  }
+  .bt-tab {
+    min-width: 2.8em;
+    padding: 0 0.35em;
+  }
+  .bt-skill {
+    width: 4.6em;
+    height: 4.6em;
+  }
+}
+@media (max-width: 900px) {
+  .bt-global .bt-btn:nth-child(2) {
+    display: none;
+  }
+  .bt-orders .bt-btn {
+    letter-spacing: 0;
+  }
+}
+
+/* portrait phones: ask to rotate */
+.bt-rotate {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  .bt-rotate {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    background: rgba(0, 0, 0, 0.82);
+    color: var(--gold-hi);
+    font-size: 1.3em;
+    pointer-events: auto;
+    z-index: 5;
+    text-align: center;
+    padding: 2em;
+  }
+  .bt-rotate > div:first-child {
+    font-size: 3em;
+  }
+}

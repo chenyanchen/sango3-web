@@ -35,6 +35,14 @@ export interface GeneralState {
   acted: boolean; // has used an action this month
   /** month index (year*12+month) when this general may appear (hidden → free) */
   appearAt?: number;
+  /** prisoners: the nation the general served before capture */
+  origNation?: number;
+  /** permanent max HP / MP bonuses (人参 / 灵芝) */
+  hpBonus?: number;
+  mpBonus?: number;
+  /** battle record */
+  wins?: number;
+  losses?: number;
 }
 
 export interface CityState {
@@ -61,6 +69,8 @@ export interface NationState {
   friendship: Record<number, number>; // nation id → 0..100
   allies: number[]; // nation ids
   ap: number; // remaining action points this month (行动点数)
+  /** item inventory (item ids) found by 搜索, given out with 物品 */
+  items?: number[];
 }
 
 export interface GameState {
@@ -78,6 +88,14 @@ export interface GameState {
   log: { y: number; m: number; text: string }[];
   seed: number;
   options: { historicalEvents: boolean };
+  /** "nationId:cityId" → month index when the city was investigated (调查) */
+  intel?: Record<string, number>;
+  /** strategy layer one-time campaign setup done */
+  inited?: boolean;
+  /** month index when the campaign started (AI grace period) */
+  startedAt?: number;
+  /** campaign finished */
+  over?: 'victory' | 'defeat';
 }
 
 export let G: GameState;
@@ -265,8 +283,9 @@ export function bestTitleFor(level: number, used: Set<number>): number {
 /** Recomputes max HP/MP from level (and refills if `full`). */
 export function recalcVitals(g: GeneralState, full = false) {
   const d = db.generals[g.id - 1];
-  g.maxHp = Math.round(d.hp + g.level * 4 + d.str / 5);
-  g.maxMp = Math.round(d.mp + g.level * 2 + d.int / 5);
+  const book = g.book >= 0 ? db.items[g.book] : undefined;
+  g.maxHp = Math.round(d.hp + g.level * 4 + d.str / 5 + (g.hpBonus ?? 0) + (book?.attribute === 3 ? book.inc : 0));
+  g.maxMp = Math.round(d.mp + g.level * 2 + d.int / 5 + (g.mpBonus ?? 0) + (book?.attribute === 4 ? book.inc : 0));
   if (full) {
     g.hp = g.maxHp;
     g.mp = g.maxMp;

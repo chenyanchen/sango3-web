@@ -1,3 +1,6 @@
+// Pixi extensions must be registered before the renderer is created (tree-shaken in production otherwise).
+import 'pixi.js/graphics';
+import 'pixi.js/text';
 import './style.css';
 import { loadDB } from './data/db';
 import { core, showError } from './engine/core';
