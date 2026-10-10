@@ -276,6 +276,26 @@ export function recalcVitals(g: GeneralState, full = false) {
   }
 }
 
+/**
+ * Adds experience, applying level-ups (stat growth + vitals). Returns the
+ * number of levels gained. Callers decide the amount; typical values:
+ * battle ≈ kills*2 + 30 (win bonus 50), domestic command ≈ 10..20.
+ */
+export function gainExp(g: GeneralState, amount: number): number {
+  g.exp += Math.max(0, Math.round(amount));
+  let ups = 0;
+  while (g.level < 99 && g.exp >= expToNext(g.level)) {
+    g.level++;
+    ups++;
+    const d = db.generals[g.id - 1];
+    // stats grow slowly toward (and slightly past) their natural cap
+    if (g.str < 100 && Math.random() < 0.35 + d.str / 400) g.str++;
+    if (g.int < 100 && Math.random() < 0.35 + d.int / 400) g.int++;
+  }
+  if (ups) recalcVitals(g);
+  return ups;
+}
+
 /** Picks 太守 (highest level, lord preferred) and 军师 (highest 智力) when unset or invalid. */
 export function assignOfficials(c: CityState) {
   const gs = generalsIn(c.id, c.owner);
