@@ -80,7 +80,10 @@ function planAttack(nid: number): { from: number; to: number; gs: GeneralState[]
       const atk = gs.reduce((s, g) => s + powerOf(g), 0);
       const def = cityPower(t) + 20;
       const ratio = atk / def;
-      const needed = tc.owner === G.player ? 1.45 : 1.3;
+      // aggression builds up while a nation sits idle, so evenly matched blocs
+      // don't freeze into a years-long stalemate
+      const calm = Math.min(12, nation(nid)?.calm ?? 0);
+      const needed = tc.owner === G.player ? Math.max(1.15, 1.45 - calm * 0.025) : Math.max(0.95, 1.3 - calm * 0.03);
       if (ratio < needed) continue;
       const score = ratio + (db.cities[t - 1].size === 1 ? 0.3 : 0) + (tc.dev / 999) * 0.2 + rng.next() * 0.3;
       if (!best || score > best.score) best = { from: c.id, to: t, gs, score };
@@ -128,10 +131,12 @@ export async function runNation(nid: number, hooks: AIHooks) {
 
   // war
   const maxAttacks = citiesOf(nid).length >= 8 ? 2 : 1;
+  let attacked = false;
   for (let k = 0; k < maxAttacks && na.ap > 0; k++) {
     if (!rng.chance(0.55)) break;
     const plan = planAttack(nid);
     if (!plan) break;
+    attacked = true;
     spendAP(nid);
     for (const g of plan.gs) g.acted = true;
     const setup = warSetup(nid, plan.from, plan.to, plan.gs);
@@ -145,6 +150,7 @@ export async function runNation(nid: number, hooks: AIHooks) {
     for (const l of sum.lines) R(l);
     if (!nation(nid)?.alive) return;
   }
+  na.calm = attacked ? 0 : (na.calm ?? 0) + 1;
 
   // domestic actions
   let guard = 60;

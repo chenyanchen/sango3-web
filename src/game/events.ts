@@ -162,8 +162,17 @@ function applyEffect(id: number): string[] {
           c.owner = liu.id;
           assignOfficials(c);
         }
-        for (const g of G.generals) if (g.status === 'serving' && g.nation === tao.id) g.nation = liu.id;
+        for (const g of G.generals) {
+          if ((g.status === 'serving' || g.status === 'prisoner') && g.nation === tao.id) g.nation = liu.id;
+          if (g.status === 'prisoner' && g.origNation === tao.id) g.origNation = liu.id;
+          if (g.status === 'prisoner' && g.nation === liu.id && g.origNation === liu.id) {
+            g.status = 'serving';
+            g.origNation = undefined;
+          }
+        }
         tao.alive = false;
+        for (const o of G.nations) o.allies = o.allies.filter((x) => x !== tao.id);
+        (liu.items ??= []).push(...(tao.items ?? []));
         for (const c of citiesOf(liu.id)) assignOfficials(c);
         out.push(`陶谦将徐州让给刘备，${tao.name}军并入刘备军。`);
       }

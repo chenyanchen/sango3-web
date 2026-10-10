@@ -52,6 +52,12 @@ export class MapView {
   pickHandler: ((id: number) => void) | null = null;
   private riders: { s: AnimSprite; x0: number; y0: number; x1: number; y1: number; t: number; dur: number; done: () => void }[] = [];
   private camAnim: { x: number; y: number; z: number } | null = null;
+  /**
+   * Screen-space insets covered by HUD panels. The camera may scroll the map
+   * this far past its edges, and centerOn() centres inside the uncovered area,
+   * so edge cities (襄平, 南海…) never hide under the city panel.
+   */
+  safe = { l: 0, t: 0, r: 0, b: 0 };
   private dispose: (() => void)[] = [];
 
   async load() {
@@ -61,7 +67,10 @@ export class MapView {
     this.cityDir = await shapes('ad/btn/city');
     await shapes('ad/btn/flag').catch(() => null);
     const mapSpr = new Sprite(map!.tex);
-    this.world.addChild(mapSpr, this.cityLayer, this.sel, this.hover);
+    // dark surround shown when the camera scrolls past the map edge
+    const edge = new Graphics().rect(-MAP_W, -MAP_H, MAP_W * 3, MAP_H * 3).fill(0x120c07);
+    edge.eventMode = 'none';
+    this.world.addChild(edge, mapSpr, this.cityLayer, this.sel, this.hover);
     if (names) {
       const ns = new Sprite(names.tex);
       ns.eventMode = 'none';
@@ -244,31 +253,57 @@ export class MapView {
     this.clampCam();
   }
 
-  private clampCam() {
+  /** Clamps a camera position (world offset) for zoom `z`, allowing overscroll by the HUD insets. */
+  private clampXY(x: number, y: number, z: number) {
     const w = core.width;
     const h = core.height;
-    const mw = MAP_W * this.z;
-    const mh = MAP_H * this.z;
-    this.world.x = mw <= w ? (w - mw) / 2 : Math.min(0, Math.max(w - mw, this.world.x));
-    this.world.y = mh <= h ? (h - mh) / 2 : Math.min(0, Math.max(h - mh, this.world.y));
+    const { l, t, r, b } = this.safe;
+    const mw = MAP_W * z;
+    const mh = MAP_H * z;
+    x = mw + l + r <= w ? (w - mw + l - r) / 2 : Math.min(l, Math.max(w - r - mw, x));
+    y = mh + t + b <= h ? (h - mh + t - b) / 2 : Math.min(t, Math.max(h - b - mh, y));
+    return { x, y };
+  }
+
+  private clampCam() {
+    const p = this.clampXY(this.world.x, this.world.y, this.z);
+    this.world.position.set(p.x, p.y);
+  }
+
+  /** Centre of the screen area not covered by HUD panels. */
+  safeCenter() {
+    const { l, t, r, b } = this.safe;
+    return { x: (l + core.width - r) / 2, y: (t + core.height - b) / 2 };
   }
 
   centerOn(cityId: number, animate = true, zoom?: number) {
     const c = db.cities[cityId - 1];
     if (!c) return;
     const z = Math.max(this.minZ, Math.min(this.maxZ, zoom ?? this.z));
-    let x = core.width / 2 - c.x * z;
-    let y = core.height / 2 - c.y * z;
-    const mw = MAP_W * z;
-    const mh = MAP_H * z;
-    x = mw <= core.width ? (core.width - mw) / 2 : Math.min(0, Math.max(core.width - mw, x));
-    y = mh <= core.height ? (core.height - mh) / 2 : Math.min(0, Math.max(core.height - mh, y));
+    const sc = this.safeCenter();
+    const { x, y } = this.clampXY(sc.x - c.x * z, sc.y - c.y * z, z);
     if (animate) this.camAnim = { x, y, z };
     else {
+      this.camAnim = null;
       this.z = z;
       this.world.scale.set(z);
       this.world.position.set(x, y);
     }
+  }
+
+  /** Pans (animated) only if the city is off-screen or under one of the given screen rects. */
+  ensureVisible(cityId: number, covered: { left: number; top: number; right: number; bottom: number }[]) {
+    const c = db.cities[cityId - 1];
+    if (!c) return;
+    const tx = this.camAnim?.x ?? this.world.x;
+    const ty = this.camAnim?.y ?? this.world.y;
+    const z = this.camAnim?.z ?? this.z;
+    const sx = tx + c.x * z;
+    const sy = ty + c.y * z;
+    const m = 18;
+    const off = sx < m || sy < m || sx > core.width - m || sy > core.height - m;
+    const hidden = covered.some((r) => sx > r.left - m && sx < r.right + m && sy > r.top - m && sy < r.bottom + m);
+    if (off || hidden) this.centerOn(cityId);
   }
 
   zoomAt(sx: number, sy: number, f: number) {

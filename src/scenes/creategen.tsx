@@ -88,7 +88,7 @@ function CreateUI() {
         </div>
       </Panel>
 
-      <Panel title="武将资料" style={{ width: '19em', display: 'flex', flexDirection: 'column' }}>
+      <Panel title="武将资料" class="cg-info" style={{ width: '19em', display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
         <div class="row" style={{ alignItems: 'flex-start', gap: '1em' }}>
           {t && <Portrait shape={`portrait/${t.shape}`} size="lg" />}
           <div class="col grow">
@@ -105,7 +105,7 @@ function CreateUI() {
             <div class="dim" style={{ fontSize: '0.9em' }}>擅长兵种：{soldierNames || '—'}</div>
           </div>
         </div>
-        <div class="stat" style={{ margin: '1em 0', fontSize: '1.1em', gridTemplateColumns: 'auto 1fr auto' }}>
+        <div class="stat cg-stats" style={{ margin: '1em 0', fontSize: '1.1em', gridTemplateColumns: 'auto 1fr auto' }}>
           {(['str', 'int', 'hp', 'mp'] as const).map((k) => (
             <>
               <b>{{ str: '武力', int: '智力', hp: '体力', mp: '技力' }[k]}</b>

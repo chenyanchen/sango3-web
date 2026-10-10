@@ -685,3 +685,25 @@ table.grid tr.sg-acted td:first-child::after {
     max-height: 52vh;
   }
 }
+
+.sg-hint {
+  margin-top: 0.5em;
+  padding: 0.3em 0.5em;
+  border-left: 3px solid var(--gold-hi);
+  background: rgba(255, 210, 120, 0.08);
+  color: var(--gold-hi);
+}
+
+/* why a row is disabled (tooltips don't exist on touch screens) */
+.sg-why {
+  display: block;
+  font-size: 0.78em;
+  color: var(--mute, #8a7a66);
+  line-height: 1.1;
+}
+
+.sg-sbtn:focus-visible,
+.sg-mbtn:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 1px;
+}

@@ -20,6 +20,13 @@ export interface Outcome {
   speaker?: number;
 }
 const ok = (msg: string, speaker?: number): Outcome => ({ ok: true, msg, speaker });
+/** Grants experience; returns a level-up note ('' if none) to append to a message. */
+function expNote(g: GeneralState, amount: number): string {
+  const ups = gainExp(g, amount);
+  if (!ups) return '';
+  const better = g.status === 'serving' && availableTitles(g).some((t) => t.soldiers > (db.titles[g.title]?.soldiers ?? 0));
+  return `\n\n${gname(g.id)}升级了！（等级 ${g.level}）` + (better ? '\n可在「任免 → 将军」晋升官职，提高带兵数。' : '');
+}
 const fail = (msg: string, speaker?: number): Outcome => ({ ok: false, msg, speaker });
 
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -186,7 +193,7 @@ export interface SearchResult extends Outcome {
 }
 
 export function doSearch(nationId: number, g: GeneralState): SearchResult {
-  gainExp(g, 12);
+  const up = expNote(g, 12);
   const c = city(g.city);
   const int = intOf(g);
   const luck = rng.next();
@@ -201,15 +208,15 @@ export function doSearch(nationId: number, g: GeneralState): SearchResult {
     c.items.splice(c.items.indexOf(iid), 1);
     const na = nation(nationId)!;
     (na.items ??= []).push(iid);
-    return { ok: true, msg: `我找到了${db.items[iid].name}。`, speaker: g.id, item: iid };
+    return { ok: true, msg: `我找到了${db.items[iid].name}。` + up, speaker: g.id, item: iid };
   }
   // gold
   if (rng.chance(0.3 + int / 400)) {
     const m = Math.round((40 + int * 1.5 + g.level * 3) * rng.range(0.6, 1.4));
     c.money = Math.min(MONEY_MAX, c.money + m);
-    return { ok: true, msg: `我找到了金钱${m}。`, speaker: g.id, money: m };
+    return { ok: true, msg: `我找到了金钱${m}。` + up, speaker: g.id, money: m };
   }
-  return { ok: false, msg: `我在${cname(c.id)}城没有任何发现‧‧‧`, speaker: g.id };
+  return { ok: false, msg: `我在${cname(c.id)}城没有任何发现‧‧‧` + up, speaker: g.id };
 }
 
 /** Free general found by 搜索 decides whether to join. */
@@ -246,8 +253,8 @@ export function doDevelop(g: GeneralState): Outcome {
   const up = Math.max(2, Math.round((intOf(g) / 4) * rng.range(0.8, 1.25)) + 2);
   const before = c.dev;
   c.dev = Math.min(DEV_MAX, c.dev + up);
-  gainExp(g, 10 + Math.round(intOf(g) / 10));
-  return ok(`${cname(c.id)}城开发度上升 ${c.dev - before} 点，目前开发度为 ${c.dev} 点。`, g.id);
+  const upn = expNote(g, 10 + Math.round(intOf(g) / 10));
+  return ok(`${cname(c.id)}城开发度上升 ${c.dev - before} 点，目前开发度为 ${c.dev} 点。` + upn, g.id);
 }
 
 // ---------------------------------------------------------------- 人才
@@ -414,8 +421,8 @@ export function doConscript(g: GeneralState): Outcome {
   c.money -= n * SOLDIER_COST;
   c.people -= n;
   c.training = Math.max(0, Math.round((c.training * (c.reserve - n) + 30 * n) / Math.max(1, c.reserve)));
-  gainExp(g, 10);
-  return ok(`我在${cname(c.id)}征得士兵${n}名。（花费金钱${n * SOLDIER_COST}）`, g.id);
+  const upn = expNote(g, 10);
+  return ok(`我在${cname(c.id)}征得士兵${n}名。（花费金钱${n * SOLDIER_COST}）` + upn, g.id);
 }
 
 export function doTrain(g: GeneralState): Outcome {
@@ -424,8 +431,8 @@ export function doTrain(g: GeneralState): Outcome {
   const up = Math.max(2, Math.round((4 + (strOf(g) + intOf(g)) / 18) * rng.range(0.8, 1.2)));
   const b = c.training;
   c.training = Math.min(100, c.training + up);
-  gainExp(g, 10);
-  return ok(`${cname(c.id)}城部队士气上升${c.training - b}点。`, g.id);
+  const upn = expNote(g, 10);
+  return ok(`${cname(c.id)}城部队士气上升${c.training - b}点。` + upn, g.id);
 }
 
 /** 调兵: set a general's soldier count, drawing from / returning to the city reserve. */
@@ -574,8 +581,8 @@ export function doProposeAlliance(from: number, to: number): Outcome {
 // ================================================================== 计略
 export function doInvestigate(nationId: number, agent: GeneralState, target: number): Outcome {
   (G.intel ??= {})[`${nationId}:${target}`] = now();
-  gainExp(agent, 10);
-  return ok(`${cname(target)}城的调查任务顺利完成了。`, agent.id);
+  const upn = expNote(agent, 10);
+  return ok(`${cname(target)}城的调查任务顺利完成了。` + upn, agent.id);
 }
 
 export function sowChance(agent: GeneralState, t: GeneralState) {
@@ -760,6 +767,8 @@ export async function applyWar(setup: WarSetup, res: WarResult, hooks: WarHooks)
     const from = g.nation;
     g.status = 'dead';
     g.city = 0;
+    g.soldiers = 0;
+    g.title = -1;
     log(`${gname(id)}阵亡。`);
     if (wasLord) await lordLost(from, hooks);
   }

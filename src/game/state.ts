@@ -69,6 +69,8 @@ export interface NationState {
   friendship: Record<number, number>; // nation id → 0..100
   allies: number[]; // nation ids
   ap: number; // remaining action points this month (行动点数)
+  /** AI: months since this nation last attacked (aggression builds up) */
+  calm?: number;
   /** item inventory (item ids) found by 搜索, given out with 物品 */
   items?: number[];
 }

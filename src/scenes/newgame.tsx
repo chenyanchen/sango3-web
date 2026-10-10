@@ -10,6 +10,9 @@ import { NATION_COLORS, newGame } from '../game/state';
 import { Btn, Panel, Portrait } from '../ui/kit';
 import { go } from './registry';
 
+/** Eras with at least two rival lords (the data's 7th age gives every city to 曹操: an instant win). */
+const playable = (s: { nations: { lord: string }[] }) => new Set(s.nations.map((n) => n.lord).filter(Boolean)).size >= 2;
+
 export const ERA_NAMES = ['黄巾之乱', '董卓弄权', '群雄割据', '官渡之战', '赤壁之战', '三国鼎立', '星落五丈原'];
 
 export class NewGameScene extends Scene {
@@ -57,7 +60,7 @@ function NewGameUI() {
     <div style={{ position: 'absolute', inset: 0, display: 'flex', gap: '1em', padding: '2.5vh 2.5vw', alignItems: 'stretch' }}>
       <Panel title="选择剧本" style={{ width: '13em', display: 'flex', flexDirection: 'column' }}>
         <div class="col" style={{ gap: '0.45em' }}>
-          {db.scenarios.map((s) => (
+          {db.scenarios.filter(playable).map((s) => (
             <Btn class={s.id === era ? 'sel' : ''} onClick={() => setEra(s.id)} style={{ textAlign: 'left' }}>
               <span class="kai">{ERA_NAMES[s.id - 1]}</span>
               <span class="mute" style={{ float: 'right', fontSize: '0.85em' }}>

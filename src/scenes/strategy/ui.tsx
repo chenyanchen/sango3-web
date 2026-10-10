@@ -101,7 +101,7 @@ function cell(g: GeneralState, c: Col): ComponentChildren {
     case 'merit': return g.merit;
     case 'city': return cname(g.city);
     case 'acted': return g.status === 'prisoner' ? <span class="red">俘虏</span> : g.acted ? <span class="mute">已出动</span> : <span class="gold">待命</span>;
-    case 'nation': return nname(g.nation);
+    case 'nation': return g.status === 'prisoner' ? (g.origNation ? nname(g.origNation) : '在野') : nname(g.nation);
   }
 }
 
@@ -133,7 +133,12 @@ export function GeneralTable(props: {
           return (
             <tr class={`${why ? 'off' : props.onRow ? 'click' : ''} ${on ? 'sel' : ''} ${props.rowClass?.(g) ?? ''}`} title={why ?? ''} onClick={() => !why && props.onRow?.(g)}>
               {props.check ? <td class="sg-check">{why ? '' : on ? '☑' : '☐'}</td> : null}
-              {cols.map((c) => <td>{cell(g, c)}</td>)}
+              {cols.map((c, i) => (
+                <td>
+                  {cell(g, c)}
+                  {i === 0 && why ? <small class="sg-why">{why}</small> : null}
+                </td>
+              ))}
               {props.onInfo ? (
                 <td>
                   <button class="sg-info" onClick={(e) => { e.stopPropagation(); props.onInfo!(g); }}>详</button>

@@ -416,3 +416,18 @@ table.grid tr.off td {
   color: var(--gold);
   letter-spacing: 0.3em;
 }
+
+/* 自创武将: keep the 登录 button on screen in short (phone landscape) viewports */
+@media (max-height: 480px) {
+  .cg-info .portrait.lg {
+    width: 4.2em;
+  }
+  .cg-info .cg-stats {
+    margin: 0.4em 0 !important;
+    font-size: 1em !important;
+  }
+  .cg-info .btn.big {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+  }
+}

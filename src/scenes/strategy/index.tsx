@@ -8,7 +8,7 @@ import type { WarResult, WarSetup } from '../../game/contracts';
 import type { EventLine } from '../../game/events';
 import {
   aiPrisonerChoice, applyWar, cname, gname, hasIntel, incomeOf, intOf, isLord, lordCity, nname, reserveCap, SIZE_NAMES,
-  totalMoney, totalSoldiers, apOf, friendship, isAllied, neighbors,
+  totalMoney, totalSoldiers, apOf, friendship, isAllied, neighbors, availableTitles,
 } from '../../game/rules';
 import { loadGame } from '../../game/save';
 import { G, addLog, city, citiesOf, gen, generalsIn, generalsOf, nation, prisonersIn, actionPointsFor, assignOfficials } from '../../game/state';
@@ -51,15 +51,17 @@ export class StrategyScene extends Scene {
     this.ctx = this.makeCtx();
     this.selCity = lordCity(G.player) || citiesOf(G.player)[0]?.id || 1;
     this.map.select(this.selCity);
-    this.map.centerOn(this.selCity, false, this.map.z * 1.1);
     window.addEventListener('keydown', this.keyHandler);
     this.playBgm();
-    this.draw();
+    this.draw(); // measures the HUD first so the capital is centred in the uncovered area
+    this.map.centerOn(this.selCity, false, this.map.z * 1.1);
     (window as unknown as { __G: unknown }).__G = G;
     if (import.meta.env.DEV || new URLSearchParams(location.search).has('dev')) {
       const w = window as unknown as Record<string, unknown>;
       w.__S = this;
       w.__db = db;
+      void import('../../game/rules').then((m) => (w.__rules = m));
+      void import('../../game/state').then((m) => (w.__state = m));
       w.__grace = (n: number) => void import('../../game/ai').then((m) => m.setAIGrace(n));
       // headless simulation of n months (player passes; AI decides everything)
       w.__sim = async (months = 12) => {
@@ -98,7 +100,27 @@ export class StrategyScene extends Scene {
     this.map.frame(dt);
   }
   resize(w: number, h: number) {
+    this.updateSafe();
     this.map.layout(w, h);
+  }
+
+  /** Screen rects of the HUD panels that cover the map. */
+  private hudRects() {
+    return ['.sg-top', '.sg-menu', '.sg-cpanel', '.sg-cpanel-tab', '.sg-log', '.sg-zoom']
+      .map((q) => this.ui.querySelector(q)?.getBoundingClientRect())
+      .filter((r): r is DOMRect => !!r && r.width > 0);
+  }
+
+  /** Tells the map which screen margins are covered by the HUD. */
+  private updateSafe() {
+    const q = (sel: string) => this.ui.querySelector(sel)?.getBoundingClientRect();
+    const menu = q('.sg-menu');
+    const panel = q('.sg-cpanel');
+    const s = { l: menu ? Math.round(menu.right) : 0, t: 0, r: panel ? Math.round(core.width - panel.left) : 0, b: 0 };
+    // a wide panel on a narrow screen: don't let the insets swallow the map
+    if (s.l + s.r > core.width * 0.7) s.r = Math.max(0, Math.round(core.width * 0.7 - s.l));
+    const o = this.map.safe;
+    if (o.l !== s.l || o.r !== s.r || o.t !== s.t || o.b !== s.b) this.map.safe = s;
   }
   resume() {
     this.playBgm();
@@ -149,6 +171,8 @@ export class StrategyScene extends Scene {
     if (fromMap) sfx('touch', { volume: 0.4 });
     if (fromMap && !this.panelOpen && core.width <= 720) this.panelOpen = true;
     this.draw();
+    // keep the selected city out from under the HUD (city panel, menu…)
+    this.map.ensureVisible(id, this.hudRects());
   }
 
   pickCity(targets: number[], kind: MarkKind, prompt: string): Promise<number> {
@@ -203,6 +227,17 @@ export class StrategyScene extends Scene {
       return;
     }
     if (this.busy || this.pick) return;
+    // submenu keyboard navigation: ↑/↓ move between commands, Enter runs it
+    if (this.group && (k === 'ArrowDown' || k === 'ArrowUp')) {
+      e.preventDefault();
+      const btns = [...this.ui.querySelectorAll<HTMLButtonElement>('.sg-sbtn:not(:disabled)')];
+      if (btns.length) {
+        const i = btns.indexOf(document.activeElement as HTMLButtonElement);
+        const n = i < 0 ? (k === 'ArrowDown' ? 0 : btns.length - 1) : (i + (k === 'ArrowDown' ? 1 : btns.length - 1)) % btns.length;
+        btns[n].focus();
+      }
+      return;
+    }
     const pan = 60;
     if (k === 'ArrowLeft' || k === 'a') this.map.pan(pan, 0);
     else if (k === 'ArrowRight' || k === 'd') this.map.pan(-pan, 0);
@@ -221,7 +256,11 @@ export class StrategyScene extends Scene {
       }
     } else {
       const g = GROUPS.find((x) => x.hot === k);
-      if (g) this.openGroup(g);
+      if (g) {
+        this.openGroup(g);
+        // keyboard users: focus the first command so ↑/↓ + Enter work right away
+        if (this.group === g) this.ui.querySelector<HTMLButtonElement>('.sg-sbtn:not(:disabled)')?.focus();
+      }
     }
   }
 
@@ -401,6 +440,7 @@ export class StrategyScene extends Scene {
   private async showReport(lines: string[], income: number) {
     playMusic(`report00${rng.int(1, 3)}`);
     const n = nation(G.player)!;
+    const promotable = generalsOf(G.player).filter((g) => availableTitles(g).some((t) => t.soldiers > (db.titles[g.title]?.soldiers ?? 0))).length;
     await modal<void>((close) => (
       <Court bg={2}>
         <Panel title={`${G.year}年${G.month}月 · 他国行动`} class="modal sg-report">
@@ -412,7 +452,8 @@ export class StrategyScene extends Scene {
               <span>城池 <b>{citiesOf(G.player).length}</b></span>
             </div>
             <div class="list sg-scroll sg-report-list">
-              {lines.length ? lines.map((l) => <div class={/我|刘备/.test(l) && l.includes(n.name) ? 'gold' : ''}>{l}</div>) : <div class="dim">各国按兵不动。</div>}
+              {lines.length ? lines.map((l) => <div class={l.includes(n.name) || l.includes('我') ? 'gold' : ''}>{l}</div>) : <div class="dim">各国按兵不动。</div>}
+              {promotable ? <div class="sg-hint">有 {promotable} 名武将可晋升官职（任免 → 将军 → 自动任命），提高带兵数。</div> : null}
             </div>
           </div>
           <div class="actions">
@@ -507,6 +548,7 @@ export class StrategyScene extends Scene {
   // ---------------------------------------------------------------- HUD
   draw() {
     this.renderUI(<Hud s={this} />);
+    this.updateSafe();
   }
 
   // accessors for the HUD
