@@ -12,7 +12,7 @@ export class AI {
   private chargeAt: number;
   constructor(readonly w: World, readonly side: 0 | 1, readonly ctx: SkillCtx) {
     // aggressive personalities charge earlier
-    this.chargeAt = TICKS_PER_SEC * rng.int(14, 30);
+    this.chargeAt = TICKS_PER_SEC * rng.int(22, 40);
   }
 
   tick() {
@@ -39,7 +39,9 @@ export class AI {
     const dist = Math.abs(eg.x - g.x);
     const strong = g.atk > eg.atk * 1.15 && hp > 0.5;
     if (hp < 0.3 && dist < 350) w.orderGeneral(this.side, 'back');
-    else if (strong || mine < 8 || theirs === 0 || (S.charge && hp > 0.45)) w.orderGeneral(this.side, 'advance');
+    else if (strong || (mine < 8 && g.atk >= eg.atk * 0.9) || theirs === 0 || (S.charge && hp > 0.6 && mine >= theirs) || this.t > TICKS_PER_SEC * 60)
+      w.orderGeneral(this.side, 'advance');
+    else if (mine < 8 && dist < 260) w.orderGeneral(this.side, 'back');
     else {
       // follow behind our troops
       let fx = 0;

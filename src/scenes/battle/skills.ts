@@ -297,6 +297,7 @@ export function castSkill(w: World, side: 0 | 1, id: number, ctx: SkillCtx): boo
   };
   w.onBanner?.(m.name, side === 0 ? 'skill' : 'skill enemy');
   w.fx.dim(0.4, 70);
+  w.skillSlow = Math.max(w.skillSlow, 105);
   w.beginCast(g, () => {
     const eff = run(c, sp);
     if (eff) w.effects.push(eff);
@@ -374,7 +375,7 @@ function enemyBox(c: Cast) {
   }
   return { x0, x1, y0, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 }
-function hit(c: Cast, x: number, y: number, rx: number, ry: number, k = 1, o: { burn?: number; knock?: number; both?: boolean } = {}) {
+function hit(c: Cast, x: number, y: number, rx: number, ry: number, k = 1, o: { burn?: number; knock?: number; both?: boolean; max?: number } = {}) {
   return c.w.hitArea(c.side, x, y, rx, ry, c.dmg * k, { ...o, genDmg: c.genDmg, hitGen: c.hitGen });
 }
 function fx(c: Cast, id: number, anim: string, x: number, y: number, o: FxOpts = {}): FxItem | null {
@@ -487,8 +488,8 @@ function rain(c: Cast, sp: Extract<Spec, { k: 'rain' }>): TL {
           decal(c, rng.pick([40013, 40014, 40015])!, 'wait', p.x, p.y, 120);
           if (sp.kind === 'firearrow') {
             fx(c, 42001, 'wait', p.x, p.y, { life: 70, fade: 20, scale: 0.8 });
-            hit(c, p.x, p.y, r, r * 0.55, 1, { burn: 90 });
-          } else hit(c, p.x, p.y, r, r * 0.55);
+            hit(c, p.x, p.y, r, r * 0.55, 1, { burn: 90, max: 2 });
+          } else hit(c, p.x, p.y, r, r * 0.55, 1, { max: 2 });
           if (i % 6 === 0) w.snd('arrow', p.x, 0.4);
         } else if (sp.kind === 'sword') {
           fx(c, 42024, 'wait', p.x, p.y, { z: 20, life: 20, fade: 15, scale: 2, blend: 'add' });
@@ -498,7 +499,7 @@ function rain(c: Cast, sp: Extract<Spec, { k: 'rain' }>): TL {
           explode(c, isRock ? (sp.kind === 'firerock' ? 42014 : 42013) : sp.kind === 'bigcannon' && i % 4 === 0 ? 42034 : 42012, p.x, p.y, sp.kind === 'bigcannon' ? 1.2 : 1);
           if (sp.kind === 'bigcannon' && i % 4 === 0) w.fx.flash(0xffe0a0, 0.35);
           fx(c, 42033, 'wait', p.x, p.y, { life: 40, fade: 30, scale: 1.6, vy: -0.3, alpha: 0.7 });
-          hit(c, p.x, p.y, r, r * 0.6, 1.2, { burn: sp.kind === 'firerock' ? 100 : 0, knock: 4 });
+          hit(c, p.x, p.y, r, r * 0.6, 1.2, { burn: sp.kind === 'firerock' ? 100 : 0, knock: 4, max: sp.kind === 'bigcannon' ? 6 : 5 });
           w.fx.shake(sp.kind === 'bigcannon' ? 8 : 5);
           w.snd(i % 2 ? 'explosion' : 'sboom', p.x, 0.7);
         }
@@ -527,8 +528,7 @@ function strike(c: Cast, sp: Extract<Spec, { k: 'strike' }>): TL {
     tl.at(t0, () => {
       switch (sp.kind) {
         case 'thunder': {
-          const b = fx(c, rng.pick([40100, 40101, 40102])!, 'wait', p.x, p.y, { life: 10, scale: 1.1, bias: 100 });
-          void b;
+          fx(c, rng.pick([40100, 40101, 40102])!, 'wait', p.x, p.y, { life: 10, scale: 1.1, bias: 100 });
           fx(c, 40103, 'wait', p.x, p.y - 10, { life: 24, scale: 0.9, bias: 101 });
           fx(c, 40106, 'wait', p.x, p.y - 30, { life: 16, bias: 102 });
           w.fx.flash(0xc8d8ff, 0.45, 0.12);
@@ -657,6 +657,7 @@ function roll(c: Cast, sp: Extract<Spec, { k: 'roll' }>): TL {
           for (let k = 0; k < n; k++) {
             const u = w.qb[k];
             if (u.side === c.side || seen.has(u) || !u.alive) continue;
+            if (seen.size >= 10 && !u.isGeneral) continue;
             seen.add(u);
             if (u.isGeneral) {
               if (!c.hitGen.has(u)) {
@@ -686,23 +687,23 @@ function runners(c: Cast, sp: Extract<Spec, { k: 'run' }>): TL {
   const { w, dir } = c;
   const box = enemyBox(c);
   const tl = new TL(200);
-  type R = { id: number; anim: string; spd: number; r: number; k: number; scale: number; burn?: number; knock: number; endAnim?: string; z?: number; blend?: 'add'; dirN: number; flipBase: boolean; fire?: boolean; shots?: boolean };
+  type R = { id: number; anim: string; spd: number; r: number; k: number; scale: number; burn?: number; knock: number; endAnim?: string; z?: number; blend?: 'add'; dirN: number; flipBase: boolean; fire?: boolean; shots?: boolean; cap?: number };
   const T: Record<string, R> = {
-    spikes: { id: 40020, anim: 'wait', spd: 6, r: 50, k: 0.9, scale: 1, knock: 6, endAnim: 'die', dirN: 2, flipBase: true },
-    firewall: { id: 40350, anim: 'loop', spd: 3, r: 70, k: 0.8, scale: 0.9, burn: 140, knock: 2, blend: 'add', dirN: 35, flipBase: true },
-    bull: { id: 40680, anim: 'run', spd: 7, r: 46, k: 1, scale: 1, burn: 100, knock: 8, dirN: 68, flipBase: true, fire: true },
-    leopard: { id: 40660, anim: 'run', spd: 9, r: 40, k: 1, scale: 1, knock: 5, dirN: 65, flipBase: true },
-    tiger: { id: 40661, anim: 'run', spd: 8.5, r: 46, k: 1.1, scale: 1, knock: 6, dirN: 65, flipBase: true },
-    elephant: { id: 40662, anim: 'run', spd: 6, r: 62, k: 1.3, scale: 1, knock: 10, dirN: 65, flipBase: true },
-    ram: { id: 40800, anim: 'wait', spd: 6.5, r: 60, k: 1.2, scale: 1, knock: 10, dirN: 80, flipBase: true },
-    car: { id: c.pick(40280, 40281), anim: 'run', spd: 5, r: 70, k: 1.1, scale: 0.9, knock: 10, endAnim: 'open', dirN: 80, flipBase: true },
-    spear: { id: c.pick(40440, 40441), anim: 'run', spd: 8, r: 50, k: 1, scale: 0.9, knock: 6, dirN: 0, flipBase: true },
-    cavalry: { id: c.pick(41200, 41201), anim: 'run', spd: 9, r: 56, k: 1.2, scale: 0.9, knock: 8, dirN: 0, flipBase: true },
-    beast: { id: c.pick(40821, 40820), anim: 'run', spd: 4.5, r: 66, k: 1.3, scale: 0.85, burn: 120, knock: 8, endAnim: 'die', dirN: 82, flipBase: true },
-    tower: { id: c.pick(40900, 40901), anim: 'run', spd: 3.5, r: 70, k: 1.2, scale: 0.8, knock: 8, endAnim: 'die', dirN: 80, flipBase: true, shots: true },
-    crescent: { id: 40720, anim: 'wait', spd: 11, r: 56, k: 1.3, scale: 1.4, knock: 6, blend: 'add', dirN: 72, flipBase: false, z: 40 },
-    clone: { id: 41060, anim: 'wait', spd: 9, r: 54, k: 1.4, scale: 0.9, knock: 7, blend: 'add', dirN: 0, flipBase: true },
-    holy: { id: 41120, anim: 'wait', spd: 12, r: 60, k: 1.5, scale: 1.6, knock: 8, blend: 'add', dirN: 0, flipBase: false, z: 30 },
+    spikes: { id: 40020, anim: 'wait', spd: 6, r: 50, k: 0.9, scale: 1, knock: 6, endAnim: 'die', dirN: 2, flipBase: true, cap: 6 },
+    firewall: { id: 40350, anim: 'loop', spd: 3, r: 70, k: 0.8, scale: 0.9, burn: 140, knock: 2, blend: 'add', dirN: 35, flipBase: true, cap: 12 },
+    bull: { id: 40680, anim: 'run', spd: 7, r: 46, k: 1, scale: 1, burn: 100, knock: 8, dirN: 68, flipBase: true, fire: true, cap: 6 },
+    leopard: { id: 40660, anim: 'run', spd: 9, r: 40, k: 1, scale: 1, knock: 5, dirN: 65, flipBase: true, cap: 5 },
+    tiger: { id: 40661, anim: 'run', spd: 8.5, r: 46, k: 1.1, scale: 1, knock: 6, dirN: 65, flipBase: true, cap: 6 },
+    elephant: { id: 40662, anim: 'run', spd: 6, r: 62, k: 1.3, scale: 1, knock: 10, dirN: 65, flipBase: true, cap: 9 },
+    ram: { id: 40800, anim: 'wait', spd: 6.5, r: 60, k: 1.2, scale: 1, knock: 10, dirN: 80, flipBase: true, cap: 9 },
+    car: { id: c.pick(40280, 40281), anim: 'run', spd: 5, r: 70, k: 1.1, scale: 0.9, knock: 10, endAnim: 'open', dirN: 80, flipBase: true, cap: 8 },
+    spear: { id: c.pick(40440, 40441), anim: 'run', spd: 8, r: 50, k: 1, scale: 0.9, knock: 6, dirN: 0, flipBase: true, cap: 6 },
+    cavalry: { id: c.pick(41200, 41201), anim: 'run', spd: 9, r: 56, k: 1.2, scale: 0.9, knock: 8, dirN: 0, flipBase: true, cap: 7 },
+    beast: { id: c.pick(40821, 40820), anim: 'run', spd: 4.5, r: 66, k: 1.3, scale: 0.85, burn: 120, knock: 8, endAnim: 'die', dirN: 82, flipBase: true, cap: 9 },
+    tower: { id: c.pick(40900, 40901), anim: 'run', spd: 3.5, r: 70, k: 1.2, scale: 0.8, knock: 8, endAnim: 'die', dirN: 80, flipBase: true, shots: true, cap: 8 },
+    crescent: { id: 40720, anim: 'wait', spd: 11, r: 56, k: 1.3, scale: 1.4, knock: 6, blend: 'add', dirN: 72, flipBase: false, z: 40, cap: 8 },
+    clone: { id: 41060, anim: 'wait', spd: 9, r: 54, k: 1.4, scale: 0.9, knock: 7, blend: 'add', dirN: 0, flipBase: true, cap: 7 },
+    holy: { id: 41120, anim: 'wait', spd: 12, r: 60, k: 1.5, scale: 1.6, knock: 8, blend: 'add', dirN: 0, flipBase: false, z: 30, cap: 10 },
     bolt: { id: c.pick(40141, 40140), anim: 'shoot', spd: 0, r: 0, k: 1, scale: 0.8, knock: 0, dirN: 0, flipBase: true },
     arrowline: { id: c.pick(40010, 40016), anim: 'attack', spd: 0, r: 0, k: 1, scale: 1, knock: 0, dirN: 0, flipBase: true },
   };
@@ -781,6 +782,7 @@ function runners(c: Cast, sp: Extract<Spec, { k: 'run' }>): TL {
               const u = w.qb[k];
               if (!u.alive || seen.has(u)) continue;
               if (u.side === c.side) continue;
+              if (seen.size >= (R0.cap ?? 8) && !u.isGeneral) continue;
               seen.add(u);
               if (u.isGeneral) {
                 if (!c.hitGen.has(u)) {
@@ -829,7 +831,7 @@ function runners(c: Cast, sp: Extract<Spec, { k: 'run' }>): TL {
                 w.snd('cargo', f.x, 0.9);
               } else if (sp.kind === 'beast' || sp.kind === 'tower') {
                 explode(c, 42009, f.x, f.y, 1.2);
-                hit(c, f.x, f.y, 90, 40, 1, { knock: 6 });
+                hit(c, f.x, f.y, 90, 40, 1, { knock: 6, max: 8 });
                 w.snd('explosion', f.x, 0.9);
                 w.fx.shake(6);
               }
@@ -876,7 +878,7 @@ function dragon(c: Cast, sp: Extract<Spec, { k: 'dragon' }>): TL {
     }
     tl.at(90, () => {
       w.fx.flash(0xffe090, 0.6, 0.05);
-      hit(c, cx, cy, 220, 110, 0.8, { knock: 8 });
+      hit(c, cx, cy, 220, 110, 0.8, { knock: 8, max: 18 });
       w.snd('lboom', cx, 1);
     });
     return tl;
@@ -885,9 +887,7 @@ function dragon(c: Cast, sp: Extract<Spec, { k: 'dragon' }>): TL {
     // 飞龙在天: a dragon sweeps across the sky, lightning strikes everywhere
     snd(c, 46, 1);
     w.fx.dim(0.65, 200);
-    const x0 = box.x0 - dir * 500;
     fx(c, 41270, 'wait', dir === 1 ? box.x0 - 300 : box.x1 + 300, FIELD_TOP + 40, { z: 120, vx: dir * 6, life: 230, fade: 20, scale: 1.4, flip: c.flip, layer: 'over' });
-    void x0;
     for (let i = 0; i < 34; i++) {
       tl.at(30 + i * 4, () => {
         const p = targets(c, 1, 30)[0];
@@ -1009,6 +1009,7 @@ function nova(c: Cast, sp: Extract<Spec, { k: 'nova' }>): TL {
         for (let k = 0; k < n; k++) {
           const u = w.qb[k];
           if (u.side === c.side || !u.alive || hits.has(u)) continue;
+          if (hits.size >= 8 + sp.n * 1.5 && !u.isGeneral) continue;
           const nx = (u.x - g.x) / R;
           const ny = (u.y - g.y) / (R * 0.42);
           const d = Math.hypot(nx, ny);
@@ -1319,6 +1320,7 @@ function vortex(c: Cast, sp: Extract<Spec, { k: 'vortex' }>): TL {
                 if (!u.alive || u.isGeneral) continue;
                 const last = seen.get(u) ?? -99;
                 if (tt - last < 24) continue;
+                if (last < 0 && seen.size >= 24) continue;
                 seen.set(u, tt);
                 w.damage(u, c.dmg * (u.side === c.side ? 0.35 : 0.8), u.side === c.side ? null : c.g, false);
                 u.kx = dir * 7;
@@ -1358,7 +1360,7 @@ function vortex(c: Cast, sp: Extract<Spec, { k: 'vortex' }>): TL {
             }
             if (tt === 140) {
               explode(c, 42011, hx, hy, 1.6);
-              hit(c, hx, hy, 120, 60, 1.2, { knock: 9 });
+              hit(c, hx, hy, 120, 60, 1.2, { knock: 9, max: 10 });
               w.fx.flash(0xc0a0ff, 0.5);
               w.fx.shake(10);
               w.snd('lboom', hx, 1);
@@ -1422,7 +1424,7 @@ function quake(c: Cast, sp: Extract<Spec, { k: 'quake' }>): TL {
         case 'nuke':
           explode(c, i % 3 === 0 ? 42034 : 42012, p.x, p.y, i % 3 === 0 ? 0.95 : 1.1);
           fx(c, 42033, 'wait', p.x, p.y, { life: 60, fade: 40, scale: 2.4, alpha: 0.6, vy: -0.4 });
-          hit(c, p.x, p.y, 80, 40, 1.3, { knock: 9 });
+          hit(c, p.x, p.y, 80, 40, 1.3, { knock: 9, max: 7 });
           if (i % 3 === 0) w.fx.flash(0xffe0b0, 0.4, 0.08);
           w.snd(i % 2 ? 'lboom' : 'explosion', p.x, 1);
           break;
@@ -1473,4 +1475,3 @@ function glider(c: Cast, sp: Extract<Spec, { k: 'glider' }>): TL {
 }
 
 export const SKILL_SPECS = SPECS;
-void FIELD_BOT;

@@ -59,11 +59,11 @@ export function generalAttack(g: GeneralState) {
 
 /** Damage a general deals to a soldier per hit. */
 export function genVsSoldierDamage(atk: number) {
-  return atk * 0.55;
+  return atk * 0.42;
 }
 /** Damage a general deals to the enemy general per hit. */
 export function genVsGenDamage(atk: number, defStr: number) {
-  return Math.max(2, atk * 0.24 - defStr * 0.05);
+  return Math.max(2, atk * 0.16 - defStr * 0.04);
 }
 /** Damage a soldier deals to another soldier per hit. */
 export function solVsSolDamage(power: number, morale: number) {
@@ -71,7 +71,7 @@ export function solVsSolDamage(power: number, morale: number) {
 }
 /** Damage a soldier deals to a general per hit. */
 export function solVsGenDamage(power: number, defStr: number) {
-  return Math.max(0.6, power * 0.16 * (1 - defStr / 330));
+  return Math.max(0.4, power * 0.09 * (1 - defStr / 330));
 }
 
 // ------------------------------------------------------------------ terrain
@@ -140,11 +140,11 @@ export function skillBoost(m: BFMagicDef, c: SkillCtx) {
 
 /** Skill damage to one soldier caught in the effect. */
 export function skillSoldierDamage(m: BFMagicDef, g: GeneralState, boost: number) {
-  return (m.power * 2.4 + g.int * 0.18 + g.level * 0.6) * boost;
+  return (m.power * 1.8 + g.int * 0.14 + g.level * 0.4) * boost;
 }
 /** Skill damage to the enemy general (once per cast for area skills). */
 export function skillGeneralDamage(m: BFMagicDef, g: GeneralState, boost: number, direct: boolean) {
-  const base = direct ? m.power * 2.2 + g.int * 0.25 + g.str * 0.15 : m.power * 1.1 + g.int * 0.12;
+  const base = direct ? m.power * 1.3 + g.int * 0.18 + g.str * 0.08 : m.power * 1.0 + g.int * 0.1;
   return base * boost;
 }
 

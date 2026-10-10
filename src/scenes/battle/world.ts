@@ -164,6 +164,8 @@ export class World {
   winner: 'left' | 'right' | 'draw' | null = null;
   endReason = '';
   slowmo = 0;
+  /** while a 武将技 plays, the rest of the battle runs at 1/3 speed */
+  skillSlow = 0;
   private lastMarchSnd = -99;
   /** running skill effects */
   effects: { tick(): boolean }[] = [];
@@ -591,6 +593,8 @@ export class World {
       u.engagedNext = 0;
     }
     const fighting = this.phase === 'fight';
+    if (this.skillSlow > 0) this.skillSlow--;
+    const slow = this.skillSlow > 0 && this.tick % 3 !== 0;
     for (const S of this.sides) if (S.locked > 0) S.locked--;
     const us = this.units;
     for (let i = 0; i < us.length; i++) {
@@ -598,6 +602,14 @@ export class World {
       u.px = u.x;
       u.py = u.y;
       if (u.state === ST_GONE) continue;
+      if (slow && u.state !== ST_DEAD && u.state !== ST_HURT && !(u instanceof General && u.casting > 0)) {
+        if (u.kx) {
+          u.x += u.kx;
+          u.kx *= 0.7;
+          if (Math.abs(u.kx) < 0.2) u.kx = 0;
+        }
+        continue;
+      }
       if (u.state === ST_DEAD) {
         u.spr.tick();
         if (u instanceof General) u.horse?.tick();
@@ -634,6 +646,7 @@ export class World {
         if (u.light?.visible) u.light.tick();
         this.genTick(u, fighting);
       } else if (fighting) this.unitTick(u);
+      else if (this.phase === 'over') this.overTick(u);
       // knockback
       if (u.kx) {
         u.x += u.kx;
@@ -641,8 +654,15 @@ export class World {
         if (Math.abs(u.kx) < 0.2) u.kx = 0;
       }
     }
-    this.separate();
-    this.tickArrows();
+    if (!slow) {
+      this.separate();
+      this.tickArrows();
+    } else
+      for (const a of this.arrows) {
+        a.px = a.x;
+        a.py = a.y;
+        a.pz = a.z;
+      }
     if (this.effects.length) {
       let j = 0;
       for (let i = 0; i < this.effects.length; i++) if (this.effects[i].tick()) this.effects[j++] = this.effects[i];
@@ -650,7 +670,7 @@ export class World {
     }
     if (this.focusT > 0) this.focusT--;
     this.fx.tick();
-    if (fighting) {
+    if (fighting && !slow) {
       this.timeLeft--;
       this.checkEnd();
       if (this.tick % 30 === 0) this.moraleCheck();
@@ -716,8 +736,14 @@ export class World {
       if (t.engaged >= cap && t.kind !== K_GEN && !charge && adx < 140) {
         u.retarget = 0;
       }
-      gx = t.x + from * u.range * u.reach;
-      gy = t.y + ((u.idx % 7) - 3) * (t.kind === K_GEN ? 4.5 : 3.2);
+      if (u.ranged) {
+        // archers close in only to shooting range, keeping their rank's depth
+        gx = t.x + from * 300 * u.reach;
+        gy = g ? g.cy + u.sdy * g.spread : u.y;
+      } else {
+        gx = t.x + from * u.range * u.reach;
+        gy = t.y + ((u.idx % 7) - 3) * (t.kind === K_GEN ? 4.5 : 3.2);
+      }
       // hold leash
       if (order === ORD_HOLD && g && Math.abs(gx - (g.ax + u.sdx)) > 200) {
         u.target = null;
@@ -746,6 +772,23 @@ export class World {
       return;
     }
     this.moveTo(u, gx, gy, u.spd);
+  }
+
+  /** after the battle: the beaten army flees, the victors stand */
+  private overTick(u: Unit) {
+    if (u.state === ST_ATTACK || u.state === ST_HURT || u.state === ST_DEFEND) return;
+    const S = this.sides[u.side];
+    const lost = (this.winner === 'left' && u.side === 1) || (this.winner === 'right' && u.side === 0);
+    if (lost) {
+      const ex = S.dir === 1 ? -80 : W + 80;
+      this.moveTo(u, ex, u.y, u.spd * 1.2);
+      if ((S.dir === 1 && u.x < -40) || (S.dir === -1 && u.x > W + 40)) {
+        u.state = ST_GONE;
+        u.escaped = true;
+        u.view.visible = false;
+        u.shadow.visible = false;
+      }
+    } else this.idle(u, S.dir);
   }
 
   private moveTo(u: Unit, gx: number, gy: number, spd: number) {
@@ -789,7 +832,7 @@ export class World {
       const cap = e.kind === K_GEN ? 10 : 3;
       if (e.engaged >= cap) s += 140;
       // before 全军突击 the soldiers' objective is the enemy general
-      if (e.kind === K_GEN && !charge) s -= 120;
+      if (e.kind === K_GEN && !charge) s -= 70;
       if (s < bs) {
         bs = s;
         best = e;
@@ -806,7 +849,7 @@ export class World {
     u.spr.speed = 1;
     const name = u.ranged ? (melee2 ? u.anims.attack2 : u.anims.attack) : rng.next() < 0.35 ? u.anims.attack2 : u.anims.attack;
     if (!this.play(u, name, true)) this.play(u, u.anims.attack, true);
-    u.cd = u.ranged ? rng.int(10, 40) : rng.int(4, 26);
+    u.cd = u.ranged ? rng.int(14, 44) : rng.int(10, 34);
     t.engagedNext++;
   }
 
@@ -932,7 +975,7 @@ export class World {
           const r = rng.next();
           const name = r < 0.08 && g.spr.has('attack10') ? 'attack10' : `attack0${rng.int(1, r < 0.5 ? 3 : 7)}`;
           this.play(g, name, true);
-          g.cd = rng.int(4, 14);
+          g.cd = rng.int(8, 20);
           return;
         }
         this.idle(g, t.x > g.x ? 1 : -1);
@@ -969,7 +1012,7 @@ export class World {
     const n = this.query(g.x + g.facing * (g.range * 0.55), g.y, g.range * 0.75 + 12, 32);
     const q = this.qbuf;
     let hits = 0;
-    const maxHits = 3 + Math.floor(g.atk / 35);
+    const maxHits = 2 + Math.floor(g.atk / 50);
     // nearest first
     const cand: Unit[] = [];
     for (let i = 0; i < n; i++) {
@@ -1346,18 +1389,30 @@ export class World {
   }
 
   /** Area damage used by skills. `both` hits soldiers of both sides (never generals of the caster). */
-  hitArea(side: 0 | 1, x: number, y: number, rx: number, ry: number, dmg: number, opt: { both?: boolean; burn?: number; knock?: number; genDmg?: number; hitGen?: Set<Unit>; lift?: boolean } = {}) {
+  hitArea(side: 0 | 1, x: number, y: number, rx: number, ry: number, dmg: number, opt: { both?: boolean; burn?: number; knock?: number; genDmg?: number; hitGen?: Set<Unit>; max?: number } = {}) {
     const n = this.query(x, y, rx, ry);
     const q = this.qbuf;
     let hits = 0;
     const list: Unit[] = [];
-    for (let i = 0; i < n; i++) list.push(q[i]);
-    for (const e of list) {
+    for (let i = 0; i < n; i++) {
+      const e = q[i];
       if (!e.alive) continue;
       if (e.side === side && (!opt.both || e.kind === K_GEN)) continue;
       const nx = (e.x - x) / rx;
       const ny = (e.y - y) / ry;
       if (nx * nx + ny * ny > 1) continue;
+      list.push(e);
+    }
+    // each strike only catches the few soldiers right under it
+    const max = opt.max ?? 3;
+    if (list.length > max) {
+      list.sort((a, b) => Math.abs(a.x - x) + 2 * Math.abs(a.y - y) - (Math.abs(b.x - x) + 2 * Math.abs(b.y - y)));
+      // the general is never shielded by the cap
+      const gi = list.findIndex((u) => u.kind === K_GEN);
+      if (gi >= max) list[max - 1] = list[gi];
+      list.length = max;
+    }
+    for (const e of list) {
       if (e instanceof General) {
         if (opt.hitGen) {
           if (opt.hitGen.has(e)) continue;

@@ -69,7 +69,7 @@ function Card(props: { g: General; world: World; side: 0 | 1; api: HudApi }) {
   const { g, world, side } = props;
   const S = world.sides[side];
   const gd = db.generals[g.info.gs.id - 1];
-  const alive = S.alive + S.units.filter((u) => u.kind === 2 && u.alive && u.group).length * 0;
+  const alive = S.alive;
   return (
     <div class={`bt-card ${side ? 'right' : 'left'} ${g.alive ? '' : 'dead'}`}>
       <div class="pf" onClick={() => props.api.jump(g.x / W)}>
@@ -199,12 +199,11 @@ export function Hud(props: { api: HudApi; world: World }) {
   };
   api.showResult = () => setResult(true);
 
-  const orderBtns: [string, string, string][] =
-    sel === -2
-      ? [['advance', '前进', 'Q'], ['back', '后退', 'E'], ['hold', '待命', 'S']]
-      : sel === -1
-        ? [['advance', '前进', 'Q'], ['back', '后退', 'E'], ['hold', '待命', 'S'], ['center', '集中', 'C'], ['spread', '分散', 'X'], ['up', '上移', 'R'], ['down', '下移', 'F']]
-        : [['advance', '前进', 'Q'], ['back', '后退', 'E'], ['hold', '待命', 'S'], ['center', '集中', 'C'], ['spread', '分散', 'X'], ['up', '上移', 'R'], ['down', '下移', 'F']];
+  const groupBtns: [string, string, string, string][] = [
+    ['advance', '前进', '前进', 'Q'], ['back', '后退', '后退', 'E'], ['hold', '待命', '待命', 'S'],
+    ['center', '集中', '中央集中', 'C'], ['spread', '分散', '上下分散', 'X'], ['up', '上移', '上方移动', 'R'], ['down', '下移', '下方移动', 'F'],
+  ];
+  const orderBtns = sel === -2 ? groupBtns.slice(0, 3) : groupBtns;
 
   const ordName = (o: number) => (o === 0 ? '进' : o === 1 ? '退' : '待');
   const groupOrder = (big: number) => {
@@ -262,9 +261,10 @@ export function Hud(props: { api: HudApi; world: World }) {
             </button>
           </div>
           <div class="bt-orders">
-            {orderBtns.map(([c, n, k]) => (
-              <button class="bt-btn" title={k} onClick={() => api.cmd(c)}>
-                {n}
+            {orderBtns.map(([c, n, full, k]) => (
+              <button class="bt-btn" title={`${full} (${k})`} onClick={() => api.cmd(c)}>
+                <span class="s">{n}</span>
+                <span class="f">{full}</span>
               </button>
             ))}
           </div>
@@ -345,8 +345,13 @@ export function Hud(props: { api: HudApi; world: World }) {
       )}
 
       {result && over && <Result world={world} api={api} />}
+      {world.tick < 300 && !over && (
+        <div class="bt-hint">
+          {matchMedia('(pointer: coarse)').matches ? '拖动画面查看战场 · 点击雷达跳转' : '拖动 / 方向键查看战场 · 点击雷达跳转 · Q E S C X R F 下令 · 空格 全军突击 · M 武将技'}
+        </div>
+      )}
       <div class="bt-rotate">
-        <div>📱↻</div>
+        <div>⟳</div>
         <div class="kai">请将设备横置以获得最佳体验</div>
       </div>
     </div>

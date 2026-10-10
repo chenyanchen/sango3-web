@@ -64,7 +64,7 @@ export function autoBattle(setup: BattleSetup): BattleResult {
   for (; t < TIME_LIMIT; t++) {
     // contact ramps up after the armies close in (~6 s)
     const contact = Math.max(0, Math.min(1, (t - 5) / 6));
-    const charge = t > 20 ? 1 : 0.6;
+    const charge = t > 30 ? 1 : 0.6;
     const dn = [0, 0];
     const dhp = [0, 0];
     for (const a of [0, 1] as const) {
@@ -76,34 +76,39 @@ export function autoBattle(setup: BattleSetup): BattleResult {
       // soldiers vs soldiers: ~0.85 attacks/s for engaged soldiers (ranged also before contact)
       const engagedA = Math.min(A.n, (B.n + 4) * 1.6) * (A.ranged ? Math.max(contact, 0.6) : contact) * 0.5;
       const perHit = solVsSolDamage(A.info.soldierPower, A.morale);
-      if (B.n > 0) dn[a ^ 1] += (engagedA * 0.85 * hitChance(ta, tb) * perHit) / B.info.soldierHp;
+      if (B.n > 0) dn[a ^ 1] += (engagedA * 0.62 * hitChance(ta, tb) * perHit) / B.info.soldierHp;
       // soldiers vs general (only a few can reach him)
       const reachGen = Math.min(A.n * contact, B.n > 5 ? 4 * charge : 9);
       dhp[a ^ 1] += reachGen * 0.8 * hitChance(ta, VS_GENERAL) * solVsGenDamage(A.info.soldierPower, B.info.gs.str);
       // general vs soldiers: ~0.8 swings/s hitting ~2 soldiers
       if (B.n > 0) {
         const kill = Math.min(1, genVsSoldierDamage(A.info.atk) / B.info.soldierHp);
-        dn[a ^ 1] += contact * 0.8 * Math.min(B.n, 1.8 + A.info.atk / 70) * 0.88 * kill * (B.n > 8 ? 0.7 : 1);
+        dn[a ^ 1] += contact * 0.6 * Math.min(B.n, 1.5 + A.info.atk / 100) * 0.88 * kill * (B.n > 8 ? 0.7 : 1);
       }
       // general duel (once the soldiers thin out or when charging)
-      if (B.hp > 0 && (B.n < 15 || A.n < 15 || t > 16)) dhp[a ^ 1] += 0.55 * genVsGenDamage(A.info.atk, B.info.gs.str);
+      if (B.hp > 0 && (B.n < 15 || A.n < 15 || t > 28)) dhp[a ^ 1] += 0.55 * genVsGenDamage(A.info.atk, B.info.gs.str);
       // skills
       A.gauge += 7.2 + contact * 3;
       if (A.gauge >= 100) {
         const list = A.info.gs.bfMagic.map((id) => db.bfMagic[id - 1]).filter((m) => m && skillAllowed(m, ctx) && m.mp <= A.mp);
         const heal = list.find((m) => m.power < 0);
-        const dmgSkills = list.filter((m) => m.power >= 0 && skillReach(m.id) > 0);
-        if (heal && A.hp < A.maxHp * 0.5) {
+        // same preferences as the real-time AI (ai.ts)
+        const dmgSkills = list
+          .filter((m) => m.power >= 0 && skillReach(m.id) > 0)
+          .map((m) => ({ m, s: m.mp + (SKILL_SPECS[m.id]?.k === 'single' ? (B.n < 20 ? 60 : 10) : B.n > 15 ? 30 : -10) }))
+          .sort((x, y) => y.s - x.s)
+          .map((x) => x.m);
+        if (heal && A.hp < A.maxHp * 0.55) {
           A.mp -= heal.mp;
           A.gauge = 0;
           A.hp = Math.min(A.maxHp, A.hp + Math.abs(heal.power) * 3 + A.info.gs.int * 0.3);
         } else if (dmgSkills.length) {
-          const m = dmgSkills.reduce((x, y) => (y.mp > x.mp ? y : x));
+          const m = dmgSkills[0];
           A.mp -= m.mp;
           A.gauge = 0;
           const boost = skillBoost(m, ctx);
           const kill = Math.min(1, skillSoldierDamage(m, A.info.gs, boost) / B.info.soldierHp);
-          dn[a ^ 1] += Math.min(B.n * 0.7, skillReach(m.id) * kill);
+          dn[a ^ 1] += Math.min(B.n * 0.75, skillReach(m.id) * 1.3 * kill);
           const sp = SKILL_SPECS[m.id];
           dhp[a ^ 1] += skillGeneralDamage(m, A.info.gs, boost, sp?.k === 'single') * (sp?.k === 'single' ? 1 : 0.7);
         }

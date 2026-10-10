@@ -1,6 +1,5 @@
 // BattleScene: 百人战 rendering, camera, input and HUD glue.
-import { Container, Graphics, Sprite, Texture, TilingSprite } from 'pixi.js';
-import { db } from '../../data/db';
+import { Container, Sprite, Texture, TilingSprite } from 'pixi.js';
 import { shapes, type Frame } from '../../engine/assets';
 import { playMusic, preloadSfx, sfx } from '../../engine/audio';
 import { core, Scene } from '../../engine/core';
@@ -14,7 +13,7 @@ import { castSkill, skillObjects, skillState } from './skills';
 import { FIELD_MID, HORIZON, VIEW_H, W, World, type General } from './world';
 import './battle.css';
 
-const VIEW_TOP = 0;
+const VIEW_TOP = -45;
 
 interface BgLayer {
   spr: Sprite;
@@ -74,8 +73,6 @@ export class BattleScene extends Scene {
   async enter() {
     this.renderUI(<div class="bt-loading">布阵中…</div>);
     this.ctx = skillCtx(this.setup);
-    const L = db.generals[this.setup.left.general - 1];
-    void L;
     const objs = World.neededObjects(this.setup);
     const skillIds = [...skillObjects(this.setup.left.general), ...skillObjects(this.setup.right.general)];
     await Promise.all([ensureObjects(objs), ensureObjects(skillIds), this.loadBg(), shapes('bf/menu')]);
@@ -121,6 +118,7 @@ export class BattleScene extends Scene {
       skills: () => skillState(this.world, 0, this.ctx),
     };
     window.addEventListener('keydown', this.keyH);
+    window.addEventListener('keyup', this.keyUpH);
     const cv = core.app.canvas;
     cv.addEventListener('pointerdown', this.pd);
     window.addEventListener('pointermove', this.pm);
@@ -136,6 +134,7 @@ export class BattleScene extends Scene {
 
   exit() {
     window.removeEventListener('keydown', this.keyH);
+    window.removeEventListener('keyup', this.keyUpH);
     const cv = core.app.canvas;
     cv.removeEventListener('pointerdown', this.pd);
     window.removeEventListener('pointermove', this.pm);
@@ -193,10 +192,11 @@ export class BattleScene extends Scene {
       for (let i = 0; i < n; i++) {
         const s = new Sprite(f.tex);
         s.anchor.set(f.ax / f.w, f.ay / f.h);
-        s.alpha = w === 2 ? rng.range(0.35, 0.7) : w === 3 ? rng.range(0.6, 1) : rng.range(0.15, 0.35);
+        s.alpha = w === 2 ? rng.range(0.35, 0.7) : w === 3 ? rng.range(0.6, 1) : rng.range(0.3, 0.55);
         const sc = rng.range(0.6, 1.2);
         s.scale.set(w === 4 ? sc * 2.2 : sc, w === 4 ? sc * 0.5 : sc);
         if (w === 4) s.tint = 0xc8b088; // wind-blown dust
+        s.blendMode = 'add';
         this.weatherC.addChild(s);
         this.drops.push({
           s, x: rng.range(0, core.width), y: rng.range(0, core.height),
@@ -262,6 +262,11 @@ export class BattleScene extends Scene {
     // camera
     const w = this.world;
     const vw = this.viewW();
+    if (this.keysDown.size) {
+      const d = (this.keysDown.has('ArrowRight') ? 1 : 0) - (this.keysDown.has('ArrowLeft') ? 1 : 0);
+      this.camX += (d * 900 * dt) / Math.max(0.5, this.s);
+      this.manualT = 2.5;
+    }
     if (this.manualT > 0) this.manualT -= dt;
     else if (!this.drag) {
       const pg = w.sides[0].gen;
@@ -445,11 +450,7 @@ export class BattleScene extends Scene {
       if (!u.shadowTex) u.shadowTex = u.shadow.texture;
       u.shadow.texture = on ? this.selTex : u.shadowTex;
       if (on) u.shadow.anchor.set(0.5, 0.5);
-      else {
-        const f = u.shadowTex;
-        u.shadow.anchor.set(u.shadowAnchor[0], u.shadowAnchor[1]);
-        void f;
-      }
+      else u.shadow.anchor.set(u.shadowAnchor[0], u.shadowAnchor[1]);
       u.shadow.tint = on ? 0x40c8ff : 0xffffff;
       u.shadow.alpha = on ? 1 : 0.45;
       u.shadow.blendMode = on ? 'add' : 'normal';
@@ -457,7 +458,14 @@ export class BattleScene extends Scene {
   }
 
   // ---------------------------------------------------------------- input
+  private keysDown = new Set<string>();
+  private keyUpH = (e: KeyboardEvent) => this.keysDown.delete(e.key);
   private onKey(e: KeyboardEvent) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      this.keysDown.add(e.key);
+      e.preventDefault();
+      return;
+    }
     if (e.repeat) return;
     const k = e.key.toLowerCase();
     const map: Record<string, string> = {
@@ -565,4 +573,3 @@ function mulTint(a: number, b: number) {
   return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(bl);
 }
 
-void Graphics;

@@ -4,7 +4,7 @@
 //   &lt=3 &rt=0              soldier types (0..8)
 //   &lf=0 &rf=1              formations (0..7)
 //   &lm=60 &rm=60            morale
-//   &t=1 &time=0..2 &w=0..4  terrain / time of day / weather
+//   &t=1 &time=0..2 &w=0..4  terrain / time of day (default 1 黄昏) / weather (default 1 阴)
 //   &bg=6                    force background set
 //   &sk=10,47,85             give the left general these 武将技 (default: a showcase set)
 //   &rsk=...                 skills for the right general
@@ -37,14 +37,14 @@ export default async function dev() {
     if (wp) g.weapon = wp.id;
   };
   const list = (k: string, d: number[]) => (q.has(k) ? q.get(k)!.split(',').map(Number).filter(Boolean) : d);
-  prep(left, list('sk', [1, 10, 11, 46, 85, 67, 78, 105, 15, 64, 53, 125]), num('lh', 38009));
-  prep(right, list('rsk', [10, 23, 59, 4]), num('rh', 0));
+  prep(left, list('sk', [1, 46, 85, 67, 78, 105, 119, 11, 58, 64, 72, 123]), num('lh', 38009));
+  prep(right, list('rsk', [10, 23, 37, 4, 50]), num('rh', 0));
   const setup: BattleSetup = {
     left: { general: left, soldiers: num('ls', 120), soldierType: num('lt', 3), formation: num('lf', 0), human: !q.has('auto'), morale: num('lm', 70) },
-    right: { general: right, soldiers: num('rs', 150), soldierType: num('rt', 0), formation: num('rf', 1), human: false, morale: num('rm', 60) },
+    right: { general: right, soldiers: num('rs', 180), soldierType: num('rt', 5), formation: num('rf', 1), human: false, morale: num('rm', 60) },
     terrain: num('t', 1) as Terrain,
-    time: num('time', 0) as TimeOfDay,
-    weather: num('w', 0) as Weather,
+    time: num('time', 1) as TimeOfDay,
+    weather: num('w', 1) as Weather,
     background: q.has('bg') ? num('bg', 1) : undefined,
   };
   const preview = autoBattle(setup);
