@@ -32,6 +32,8 @@ export abstract class Scene {
   frame(_dt: number): void {}
   /** Viewport size changed (CSS pixels). */
   resize(_w: number, _h: number): void {}
+  /** Became the top scene again after a pushed scene was popped (e.g. restore music). */
+  resume(): void {}
   /** Re-render DOM UI using Preact. */
   renderUI(node: ComponentChild) {
     render(node, this.ui);
@@ -143,6 +145,11 @@ class Core {
       top.root.visible = true;
       top.ui.style.display = '';
       top.resize(this.width, this.height);
+      try {
+        top.resume();
+      } catch (e) {
+        console.error(e);
+      }
     }
     this.acc = 0;
     await this.fadeIn();
