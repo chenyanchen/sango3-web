@@ -5,6 +5,7 @@ import { playMusic, setVolumes, settings, sfx, unlockAudio } from '../engine/aud
 import { core, Scene } from '../engine/core';
 import { Backdrop } from '../engine/view';
 import { listSaves, loadGame } from '../game/save';
+import { showHelp } from '../ui/help';
 import { Btn, modal, Panel, toast } from '../ui/kit';
 import { go } from './registry';
 
@@ -79,6 +80,9 @@ export class TitleScene extends Scene {
           </Btn>
           <Btn class="big" onClick={() => void optionsBox()}>
             游戏设定
+          </Btn>
+          <Btn class="big ghost" onClick={() => void showHelp()}>
+            游戏说明
           </Btn>
         </div>
       </div>,
