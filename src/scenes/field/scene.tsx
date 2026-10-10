@@ -4,6 +4,7 @@ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { db } from '../../data/db';
 import { playMusic, sfx } from '../../engine/audio';
 import { core, Scene } from '../../engine/core';
+import { modalKey } from '../../engine/keys';
 import { rng } from '../../engine/rng';
 import type { BattleResult, BattleSetup, DuelResult, DuelSetup, WarResult, WarSetup } from '../../game/contracts';
 import { G, maxSoldiers } from '../../game/state';
@@ -11,6 +12,7 @@ import { Btn, modal, Panel, Portrait, ShapeImg } from '../../ui/kit';
 import { autoBattle, runBattle } from '../battle';
 import { autoDuel, runDuel } from '../duel';
 import { AI, type Plan } from './ai';
+import { autoWar } from './auto';
 import './field.css';
 import { loadMap, TERRAIN_NAME, type FieldMap } from './map';
 import { CampView, dirFromDelta, FloatText, loadAtlases, MapView, unitColor, UnitView, type Atlases } from './view';
@@ -91,6 +93,17 @@ export class FieldScene extends Scene {
   }
 
   async enter() {
+    try {
+      await this.load();
+    } catch (e) {
+      // never leave the strategy layer hanging: resolve the war numerically
+      console.error('[field] failed to start, auto-resolving', e);
+      this.exited = true;
+      setTimeout(() => this.resolveDone(autoWar(this.setup)), 0);
+    }
+  }
+
+  private async load() {
     const [map, at] = await Promise.all([loadMap(this.setup.city), loadAtlases()]);
     this.map = map;
     this.at = at;
@@ -132,9 +145,17 @@ export class FieldScene extends Scene {
     this.cam.y = map.sy(c);
     this.music = `sf00${rng.int(1, 3)}`;
     playMusic(this.music);
+    window.addEventListener('keydown', this.onKey);
     this.draw();
     setTimeout(() => void this.play(), 50);
   }
+
+  private onKey = (e: KeyboardEvent) => {
+    // only while the field map is on top (not under a pushed battle/duel)
+    if (core.scene !== this || e.repeat) return;
+    if (modalKey(e)) return;
+    if (e.key === 'Escape' && this.sel && !this.busy) this.cancel();
+  };
 
   resume() {
     playMusic(this.music);
@@ -144,7 +165,16 @@ export class FieldScene extends Scene {
 
   exit() {
     this.exited = true;
+    window.removeEventListener('keydown', this.onKey);
+    const tex = new Set<Texture>();
+    for (const s of this.drops) {
+      const ext = s as Sprite & { snowTex?: Texture; rainTex?: Texture };
+      if (ext.snowTex) tex.add(ext.snowTex);
+      if (ext.rainTex) tex.add(ext.rainTex);
+    }
     super.exit();
+    for (const t of tex) t.destroy(true);
+    this.drops = [];
   }
 
   private defaultZoom() {
@@ -358,7 +388,7 @@ export class FieldScene extends Scene {
           await this.showBanner(
             `第${w.day}日 ${TIME_NAME[w.time]}`,
             human ? 'sf/menu/myaction' : w.playerSide === null ? undefined : 'sf/menu/enemyaction',
-            this.fast && !human ? 500 : 1000,
+            this.fast ? (human && !this.delegate ? 700 : 350) : 1000,
           );
           if (human && !this.delegate) await this.playerPhase();
           await this.aiPhase(side);
@@ -394,6 +424,9 @@ export class FieldScene extends Scene {
       <Panel title={title} class="modal fw-summary">
         <div class="body col" style={{ gap: '0.6em', minWidth: '18em' }}>
           <div class="kai fw-reason">{w.winReason || (won ? '敌军败退。' : '我军败退。')}</div>
+          <div class="dim">俘虏：{names(result.captured)}</div>
+          <div class="dim">撤退：{names(result.retreated)}</div>
+          {result.killed.length > 0 && <div class="red">阵亡：{names(result.killed)}</div>}
           <div class="fw-armies">
             {([0, 1] as Side[]).map((s) => (
               <div class="col fw-army" key={s}>
@@ -409,9 +442,6 @@ export class FieldScene extends Scene {
               </div>
             ))}
           </div>
-          <div class="dim">俘虏：{names(result.captured)}</div>
-          <div class="dim">撤退：{names(result.retreated)}</div>
-          {result.killed.length > 0 && <div class="red">阵亡：{names(result.killed)}</div>}
         </div>
         <div class="actions">
           <Btn class="primary" onClick={() => close()}>
@@ -550,6 +580,7 @@ export class FieldScene extends Scene {
 
   /** reconcile views with the model (removed units, positions, bars) */
   private syncViews() {
+    if (this.exited) return;
     for (const [u, v] of this.views) {
       if (u.state !== 'field') {
         if (v.visible && v.alpha === 1) void this.removeUnit(u);
@@ -1012,9 +1043,11 @@ export class FieldScene extends Scene {
     ));
     if (!ok) return;
     const w = this.war;
-    for (const u of w.sideUnits(w.playerSide ?? 0)) if (!u.ally) w.retreat(u, this.hooks);
+    const ps: Side = w.playerSide ?? 0;
+    for (const u of w.sideUnits(ps)) if (!u.ally) w.retreat(u, this.hooks);
     this.deselect();
     this.syncViews();
+    if (!w.sideUnits(ps).length) w.end(ps === 0 ? 1 : 0, `${w.sideName(ps)}军全军撤退。`);
     w.checkVictory();
     this.endPhase?.();
   }
@@ -1031,7 +1064,7 @@ export class FieldScene extends Scene {
 
   // ------------------------------------------------------------ DOM UI
   draw() {
-    if (!this.war) return;
+    if (!this.war || this.exited) return;
     for (const v of this.views.values()) v.showName(v.unit === this.focus || v.unit === this.sel);
     this.renderUI(<Hud s={this} v={++this.ver} />);
   }

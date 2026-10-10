@@ -120,6 +120,11 @@ class ArenaScene extends Scene {
     this.draw();
   }
 
+  resume() {
+    playMusic('arena');
+    this.draw();
+  }
+
   private onKey = (e: KeyboardEvent) => {
     if (core.scene !== this || e.repeat) return;
     const k = e.key.toLowerCase();

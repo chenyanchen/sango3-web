@@ -119,10 +119,15 @@ export function playMusic(name: string) {
   const prev = current;
   current = { name, el };
   el.play().then(
-    () => fade(el, settings.music, 800),
     () => {
-      pendingMusic = name;
-      current = prev;
+      if (current?.el === el) fade(el, settings.music, 800);
+    },
+    (e: unknown) => {
+      // a newer track took over (or this one was paused before it could start): nothing to do
+      if (current?.el !== el) return;
+      // autoplay blocked: retry on the next user gesture (unlockAudio)
+      current = null;
+      if ((e as { name?: string })?.name === 'NotAllowedError') pendingMusic = name;
     },
   );
   if (prev) fade(prev.el, 0, 800, () => prev.el.pause());

@@ -6,6 +6,7 @@ import { AnimSprite, loadObject, type LoadedObject } from '../../engine/anim';
 import { shapes, type Frame } from '../../engine/assets';
 import { playMusic, preloadSfx, sfx, unlockAudio } from '../../engine/audio';
 import { core, Scene } from '../../engine/core';
+import { modalKey } from '../../engine/keys';
 import { Rng } from '../../engine/rng';
 import type { DuelResult, DuelSetup } from '../../game/contracts';
 import { confirmBox, Portrait } from '../../ui/kit';
@@ -379,7 +380,8 @@ export class DuelScene extends Scene {
 
   // ---------------------------------------------------------------- input
   private onKey = (e: KeyboardEvent) => {
-    if (e.repeat || this.paused || core.scene !== this) return;
+    if (e.repeat || core.scene !== this) return;
+    if (modalKey(e) || this.paused) return; // e.g. the 撤退 confirm dialog
     unlockAudio();
     const k = e.key.toLowerCase();
     this.keysDown.add(k);

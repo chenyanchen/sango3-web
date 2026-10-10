@@ -29,6 +29,9 @@ export interface HudApi {
   pickSkill?: (n: number) => void;
   groupList?: () => number[];
   showResult?: () => void;
+  resultShown?: () => boolean;
+  /** closes the retreat confirm / skill menu; false when none was open */
+  closeOverlay?: () => boolean;
 }
 
 function useImg(path: string) {
@@ -174,7 +177,7 @@ export function Hud(props: { api: HudApi; world: World }) {
   const ready = S.gen.gauge >= 100 && S.gen.alive && !S.retreat;
   const canCast = skills.some((s) => s.ok);
   const over = world.phase === 'over';
-  const locked = over || S.retreat || !S.gen.alive || world.phase !== 'fight';
+  const locked = over || !S.human || S.retreat || !S.gen.alive || world.phase !== 'fight';
 
   api.banner = (text, kind = '') => {
     const id = Math.random();
@@ -198,6 +201,13 @@ export function Hud(props: { api: HudApi; world: World }) {
     api.select(all[(i + 1) % all.length]);
   };
   api.showResult = () => setResult(true);
+  api.resultShown = () => result;
+  api.closeOverlay = () => {
+    if (!confirmRetreat && !skillsOpen) return false;
+    setConfirmRetreat(false);
+    setSkillsOpen(false);
+    return true;
+  };
 
   const groupBtns: [string, string, string, string][] = [
     ['advance', '前进', '前进', 'Q'], ['back', '后退', '后退', 'E'], ['hold', '待命', '待命', 'S'],

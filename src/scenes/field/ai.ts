@@ -5,7 +5,7 @@ import { db } from '../../data/db';
 import { rng } from '../../engine/rng';
 import { Terrain } from '../../game/contracts';
 import { maxSoldiers } from '../../game/state';
-import { cost, g, M, type Side, type Unit, type War } from './war';
+import { cost, g, M, MAX_ROUNDS, type Side, type Unit, type War } from './war';
 
 export type Plan =
   | { kind: 'wait'; move: number }
@@ -150,6 +150,9 @@ export class AI {
         if (eg.soldiers < maxSoldiers(eg) * 0.3) ratio += 0.25;
         if (eg.hp < eg.maxHp * 0.35) ratio += 0.2;
         if (e.pos === w.base[u.side]) ratio += 0.8; // repel units sitting on our base
+        // attackers must dislodge whoever holds the objective, and grow bolder as time runs out
+        if (u.side === 0 && e.pos === w.base[1]) ratio += 0.35;
+        if (u.side === 0) ratio += (w.round / MAX_ROUNDS) * 0.5;
         if (w.isLord(e)) ratio += 0.1;
         const terr = w.map.terrain(t);
         if (terr === Terrain.Forest || terr === Terrain.Mountain) ratio += 0.05;

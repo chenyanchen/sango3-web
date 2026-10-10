@@ -190,6 +190,7 @@ class Core {
 }
 
 export const core = new Core();
+if (import.meta.env.DEV) (window as unknown as { __core: Core }).__core = core;
 
 export function showError(e: unknown) {
   const el = document.createElement('div');

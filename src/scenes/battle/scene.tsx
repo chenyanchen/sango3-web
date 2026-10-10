@@ -6,6 +6,7 @@ import { core, Scene } from '../../engine/core';
 import { rng } from '../../engine/rng';
 import type { BattleResult, BattleSetup } from '../../game/contracts';
 import { AI } from './ai';
+import { autoBattle } from './auto';
 import { ensureObjects } from './fx';
 import { Hud, type HudApi } from './hud';
 import { bgForTerrain, skillCtx, TICKS_PER_SEC, type SkillCtx } from './rules';
@@ -71,6 +72,18 @@ export class BattleScene extends Scene {
   }
 
   async enter() {
+    try {
+      await this.load();
+    } catch (e) {
+      // never leave the caller hanging: resolve with the numeric simulation
+      console.error('[battle] failed to start, auto-resolving', e);
+      const f = this.resolveFn;
+      this.resolveFn = null as unknown as typeof f;
+      if (f) setTimeout(() => f(autoBattle(this.setup)), 0);
+    }
+  }
+
+  private async load() {
     this.renderUI(<div class="bt-loading">布阵中…</div>);
     this.ctx = skillCtx(this.setup);
     const objs = World.neededObjects(this.setup);
@@ -142,7 +155,11 @@ export class BattleScene extends Scene {
     cv.removeEventListener('wheel', this.wheel);
     core.speed = 1;
     this.world?.fx.clear();
+    const own = [this.groundShade?.texture, this.selTex, this.markTex];
     super.exit();
+    // canvas-generated textures are owned by this scene (atlas textures are shared/cached)
+    for (const t of own) if (t && t !== Texture.WHITE && !t.destroyed) t.destroy(true);
+    this.selTex = this.markTex = null;
   }
 
   // ---------------------------------------------------------------- background
@@ -357,7 +374,7 @@ export class BattleScene extends Scene {
     const w = this.world;
     if (w.phase !== 'fight') return;
     const S = w.sides[0];
-    if (S.retreat || !S.gen.alive) return;
+    if (!S.human || S.retreat || !S.gen.alive) return;
     sfx('touch', { volume: 0.5 });
     switch (c) {
       case 'charge':
@@ -388,7 +405,7 @@ export class BattleScene extends Scene {
 
   playerCast(id: number) {
     const w = this.world;
-    if (w.phase !== 'fight') return;
+    if (w.phase !== 'fight' || !w.sides[0].human) return;
     if (castSkill(w, 0, id, this.ctx)) {
       this.manualT = 0;
       this.drawUI();
@@ -466,8 +483,18 @@ export class BattleScene extends Scene {
       e.preventDefault();
       return;
     }
-    if (e.repeat) return;
+    if (e.repeat || core.scene !== this) return;
     const k = e.key.toLowerCase();
+    if (this.world?.phase === 'over') {
+      // result screen: Enter / Space / Esc confirms
+      if ((k === 'enter' || k === ' ' || k === 'escape') && this.hud.resultShown?.()) {
+        e.preventDefault();
+        this.finish();
+      }
+      return;
+    }
+    if (k === 'escape' && this.hud.closeOverlay?.()) return;
+    if (!this.world?.sides[0].human && k !== 'p' && k !== 'escape' && k !== '+' && k !== '=' && k !== '-') return;
     const map: Record<string, string> = {
       q: 'advance', e: 'back', s: 'hold', c: 'center', x: 'spread', r: 'up', f: 'down',
       ' ': 'charge', z: 'holdAll',
@@ -520,8 +547,11 @@ export class BattleScene extends Scene {
     const w = this.world;
     const won = w.winner === 'left';
     window.setTimeout(() => {
+      if (!this.resolveFn) return;
       sfx(w.winner === 'draw' ? 'sorry' : won ? 'win' : 'lose');
       this.hud.showResult?.();
+      // nobody to confirm a watched AI-vs-AI battle (委任 / allies): continue on our own
+      if (!this.setup.left.human && !this.setup.right.human) window.setTimeout(() => this.finish(), 2500);
     }, 1800);
   }
 

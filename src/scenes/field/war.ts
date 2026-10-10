@@ -401,7 +401,8 @@ export class War {
 
   private applyBattle(u: Unit, r: BattleResult['left'], won: boolean, _text: string[]) {
     const gs = g(u);
-    gs.soldiers = Math.max(0, Math.min(Math.round(r.soldiersLeft), maxSoldiers(gs) * 2));
+    // a battle never adds troops beyond what the general brought (or his normal maximum)
+    gs.soldiers = Math.max(0, Math.min(Math.round(r.soldiersLeft), Math.max(gs.soldiers, maxSoldiers(gs))));
     gs.hp = clamp(Math.round(r.hp), 0, gs.maxHp);
     gs.mp = clamp(Math.round(r.mp), 0, gs.maxMp);
     u.kills += r.kills;
@@ -487,7 +488,13 @@ export class War {
       text.push(`${name(a)}与${name(b)}大战数十回合，不分胜负。`);
       gainExp(g(a), 20);
       gainExp(g(b), 20);
-      hooks.log(text[0]);
+      // exhausted (HP 0) generals cannot stay on the field
+      for (const u of [a, b])
+        if (g(u).hp <= 0) {
+          u.state = 'retreated';
+          text.push(`${name(u)}体力耗尽，撤出了战场。`);
+        }
+      for (const t of text) hooks.log(t);
       return { kind: 'duel', winner: null, loser: null, text };
     }
     const win = res.winner === 'left' ? L : R;

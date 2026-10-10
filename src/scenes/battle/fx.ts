@@ -17,7 +17,10 @@ export function ensureObjects(ids: number[]): Promise<unknown> {
       if (!p) {
         p = loadObject(id).then(
           (o) => (objs.set(id, o), o),
-          () => null,
+          () => {
+            loading.delete(id); // retry next battle (transient network error)
+            return null;
+          },
         );
         loading.set(id, p);
       }

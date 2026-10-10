@@ -2,6 +2,8 @@
 //
 //   pnpm shot "/?dev=battle" out.png [--w 1280] [--h 720] [--wait 3000]
 //             [--click "x,y"]... [--key "Space"]... [--eval "js"] [--mobile]
+//             [--script steps.mjs]   (default export: async (page, ctx) => {}; runs
+//                                     after the clicks/keys, ctx = { shot(name), log })
 //
 // Requires the dev server (pnpm dev, default http://localhost:5173) to run.
 // Prints console errors from the page.
@@ -43,7 +45,14 @@ const page = await browser.newPage({
 page.on('console', (m) => {
   if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}]`, m.text());
 });
+page.on('response', (r) => {
+  if (r.status() >= 400) console.log(`[http ${r.status()}]`, r.url());
+});
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
+let loads = 0;
+page.on('load', () => {
+  if (++loads > 1) console.log('[reload] page reloaded (HMR?)');
+});
 await page.goto(base + url, { waitUntil: 'load' });
 await page.waitForTimeout(+opt('wait', '2500')!);
 for (const c of all('click')) {
@@ -59,6 +68,25 @@ const ev = opt('eval');
 if (ev) {
   console.log('eval →', JSON.stringify(await page.evaluate(ev)));
   await page.waitForTimeout(+opt('after', '1500')!);
+}
+const T0 = Date.now();
+const script = opt('script');
+if (script) {
+  const mod = await import(path.resolve(script));
+  let n = 0;
+  const ctx = {
+    shot: async (name?: string) => {
+      const f = out.replace(/\.png$/, `-${String(++n).padStart(2, '0')}${name ? '-' + name : ''}.png`);
+      await page.screenshot({ path: f });
+      console.log('saved', f);
+    },
+    log: (...a: unknown[]) => console.log(`[script ${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a),
+  };
+  try {
+    await mod.default(page, ctx);
+  } catch (e) {
+    console.log('[script error]', e instanceof Error ? e.stack : e);
+  }
 }
 await page.screenshot({ path: out });
 console.log('saved', out);

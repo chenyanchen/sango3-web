@@ -101,6 +101,11 @@ export function shapes(dir: string): Promise<ShapeDir> {
       const pages = await Promise.all(man.pages.map((pg) => Assets.load<Texture>(assetUrl('shape/' + pg))));
       return new ShapeDir(dir, man, pages);
     })();
+    // don't remember failures (a transient network error would break this dir for good)
+    const key = dir;
+    p.catch(() => {
+      if (dirs.get(key) === p) dirs.delete(key);
+    });
     dirs.set(dir, p);
   }
   return p;
@@ -150,6 +155,10 @@ export function frameDataUrl(path: string): Promise<string> {
       const blob = await new Promise<Blob>((res) => c.toBlob((b) => res(b!), 'image/png'));
       return URL.createObjectURL(blob);
     })();
+    const key = path;
+    p.catch(() => {
+      if (canvasCache.get(key) === p) canvasCache.delete(key);
+    });
     canvasCache.set(path, p);
   }
   return p;

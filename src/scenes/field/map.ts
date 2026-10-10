@@ -208,6 +208,8 @@ export function loadMap(id: number): Promise<FieldMap> {
       if (!r.ok) throw new Error(`map ${id} missing`);
       return parseBlk(id, await r.arrayBuffer());
     })();
+    // don't remember failures (a transient network error would break this map for good)
+    p.catch(() => cache.delete(id));
     cache.set(id, p);
   }
   return p;

@@ -26,6 +26,10 @@ export function loadObject(id: number | string): Promise<LoadedObject> {
       if (!def) throw new Error(`object ${key} not defined`);
       return { id: key, def, dir: await shapes(def.dir) };
     })();
+    const mine = p;
+    p.catch(() => {
+      if (objCache.get(key) === mine) objCache.delete(key);
+    });
     objCache.set(key, p);
   }
   return p;
