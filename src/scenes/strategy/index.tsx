@@ -2,6 +2,7 @@
 import { useState } from 'preact/hooks';
 import { db } from '../../data/db';
 import { playMusic, sfx } from '../../engine/audio';
+import { modalKey } from '../../engine/keys';
 import { core, Scene } from '../../engine/core';
 import { rng } from '../../engine/rng';
 import type { WarResult, WarSetup } from '../../game/contracts';
@@ -202,21 +203,7 @@ export class StrategyScene extends Scene {
   private onKey(e: KeyboardEvent) {
     if (core.scene !== this) return;
     if (isModalOpen()) {
-      // keyboard for dialogs: Esc = cancel/back, Enter = primary action
-      const backs = document.querySelectorAll('.modal-host .modal-back');
-      const top = backs[backs.length - 1];
-      if (!top) return;
-      const btns = [...top.querySelectorAll<HTMLButtonElement>('.actions .btn')].filter((b) => !b.disabled);
-      if (e.key === 'Escape') {
-        const c = btns.find((b) => /取消|返回|略过|放弃|拒绝/.test(b.textContent ?? '')) ?? (btns.length === 1 ? btns[0] : undefined);
-        c?.click();
-      } else if (e.key === 'Enter') {
-        const p = top.querySelector<HTMLButtonElement>('.actions .btn.primary:not(:disabled)');
-        if (p && !(document.activeElement instanceof HTMLButtonElement)) {
-          e.preventDefault();
-          p.click();
-        }
-      }
+      modalKey(e);
       return;
     }
     const k = e.key;

@@ -11,7 +11,7 @@ export function modalKey(e: KeyboardEvent): boolean {
   if (!top) return false;
   const btns = [...top.querySelectorAll<HTMLButtonElement>('.actions .btn')].filter((b) => !b.disabled);
   if (e.key === 'Escape') {
-    const c = btns.find((b) => /取消|返回|略过|放弃|拒绝|继续战斗/.test(b.textContent ?? '')) ?? (btns.length === 1 ? btns[0] : undefined);
+    const c = btns.find((b) => /^(取消|返回|略过|放弃|拒绝|继续战斗)$|取消|返回/.test((b.textContent ?? '').trim())) ?? (btns.length === 1 ? btns[0] : undefined);
     c?.click();
   } else if (e.key === 'Enter') {
     const p = top.querySelector<HTMLButtonElement>('.actions .btn.primary:not(:disabled)');
