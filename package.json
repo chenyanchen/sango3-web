@@ -1,0 +1,28 @@
+{
+  "name": "sgqyz3",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "extract": "tsx tools/extract/main.ts",
+    "typecheck": "tsc --noEmit",
+    "shot": "tsx tools/shot.ts"
+  },
+  "dependencies": {
+    "pixi.js": "^8.22.0",
+    "preact": "^11.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "maxrects-packer": "^2.7.3",
+    "opencc-js": "^1.4.2",
+    "playwright-core": "^1.64.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

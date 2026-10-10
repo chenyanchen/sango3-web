@@ -1,0 +1,9 @@
+{
+  "name": "三国群英传 III · 重制",
+  "short_name": "群英传3",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "start_url": "./"
+}

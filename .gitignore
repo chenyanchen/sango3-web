@@ -1,0 +1,7 @@
+node_modules
+dist
+public/assets
+.cache
+*.log
+.DS_Store
+.cache-*.log
