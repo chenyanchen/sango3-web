@@ -5,6 +5,7 @@ import { imageUrl, shape } from '../engine/assets';
 import { sfx } from '../engine/audio';
 import { Scene } from '../engine/core';
 import { Backdrop } from '../engine/view';
+import { injectCustom, listCustom } from '../game/custom';
 import { NATION_COLORS, newGame } from '../game/state';
 import { Btn, Panel, Portrait } from '../ui/kit';
 import { go } from './registry';
@@ -128,6 +129,7 @@ function NewGameUI() {
           disabled={!sel}
           onClick={() => {
             sfx('accept');
+            injectCustom(listCustom(), era);
             newGame(era, lord);
             void go.strategy();
           }}

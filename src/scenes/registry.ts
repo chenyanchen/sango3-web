@@ -5,6 +5,7 @@ import { core } from '../engine/core';
 export const go = {
   title: async () => core.go(new (await import('./title')).TitleScene()),
   newGame: async () => core.go(new (await import('./newgame')).NewGameScene()),
+  createGeneral: async () => core.go(new (await import('./creategen')).CreateGeneralScene()),
   /** Enter the strategy (内政) map with the current G state. */
   strategy: async () => core.go(new (await import('./strategy')).StrategyScene()),
 };

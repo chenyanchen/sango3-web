@@ -73,6 +73,9 @@ export class TitleScene extends Scene {
           <Btn class="big" onClick={load}>
             读取进度
           </Btn>
+          <Btn class="big" onClick={() => { unlockAudio(); void go.createGeneral(); }}>
+            自创武将
+          </Btn>
           <Btn class="big" onClick={() => void optionsBox()}>
             游戏设定
           </Btn>

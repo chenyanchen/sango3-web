@@ -249,6 +249,7 @@ table.grid tr.off td {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 3px 8px rgba(0, 0, 0, 0.6);
   background: #1a100a center / cover no-repeat;
   border-radius: 2px;
+  flex-shrink: 0;
 }
 .portrait.sm {
   width: 2.6em;

@@ -1,4 +1,6 @@
 // Save slots in localStorage (JSON). Slot 0 is the autosave.
+import type { GeneralDef } from '../data/db';
+import { customDefsInDb, restoreCustomDefs } from './custom';
 import { G, setState, type GameState } from './state';
 
 export const SLOTS = 10;
@@ -35,6 +37,7 @@ export function saveGame(slot: number): boolean {
       cities: G.cities.filter((c) => c.owner === G.player).length, scenario: G.scenario,
     };
     localStorage.setItem(key(slot), JSON.stringify(G));
+    localStorage.setItem(key(slot) + '.custom', JSON.stringify(customDefsInDb()));
     localStorage.setItem(key(slot) + '.info', JSON.stringify(info));
     return true;
   } catch (e) {
@@ -49,6 +52,8 @@ export function loadGame(slot: number): boolean {
     if (!v) return false;
     const s = JSON.parse(v) as GameState;
     if (s.version !== 1) return false;
+    const custom = JSON.parse(localStorage.getItem(key(slot) + '.custom') ?? '[]') as GeneralDef[];
+    restoreCustomDefs(custom);
     setState(s);
     return true;
   } catch (e) {
