@@ -302,8 +302,11 @@ export function recalcVitals(g: GeneralState, full = false) {
  * number of levels gained. Callers decide the amount; typical values:
  * battle ≈ kills*2 + 30 (win bonus 50), domestic command ≈ 10..20.
  */
+/** Global experience multiplier (tuned so levels come at roughly the original's pace). */
+export const EXP_RATE = 1.7;
+
 export function gainExp(g: GeneralState, amount: number): number {
-  g.exp += Math.max(0, Math.round(amount));
+  g.exp += Math.max(0, Math.round(amount * EXP_RATE));
   let ups = 0;
   while (g.level < 99 && g.exp >= expToNext(g.level)) {
     g.level++;
