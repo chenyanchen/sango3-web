@@ -7,6 +7,12 @@ const DEV: Record<string, () => Promise<{ default: () => Promise<void> | void }>
   duel: () => import('./scenes/duel/dev'),
   field: () => import('./scenes/field/dev'),
   strategy: () => import('./scenes/strategy/dev'),
+  ending: async () => ({
+    default: async () => {
+      (await import('./game/state')).newGame(5, '刘备');
+      await (await import('./scenes/ending')).showEnding(new URLSearchParams(location.search).get('win') !== '0');
+    },
+  }),
 };
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
@@ -18,13 +24,13 @@ async function boot() {
   await loadDB();
   const dev = new URLSearchParams(location.search).get('dev');
   if (dev && DEV[dev]) {
-    await (await DEV[dev]()).default();
     document.getElementById('boot')?.remove();
+    await (await DEV[dev]()).default();
     return;
   }
   const { go } = await import('./scenes/registry');
-  await go.title();
   document.getElementById('boot')?.remove();
+  await go.title();
 }
 
 boot().catch((e) => {
