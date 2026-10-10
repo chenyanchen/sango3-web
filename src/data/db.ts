@@ -153,7 +153,7 @@ export interface FormationDef {
   generalPos: [number, number];
   groupPos: [number, number][]; // 8 groups
   bigGroups: number[][];
-  terrainCost: number[]; // per SF terrain attr (1-based attr → index attr-1)
+  terrainCost: number[]; // indexed directly by SF terrain attr (see field/map.ts)
 }
 
 export interface TitleDef {

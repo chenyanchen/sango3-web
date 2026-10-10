@@ -1,0 +1,400 @@
+/* 野战 HUD */
+.fw-input {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+}
+.fw-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.35em 0.6em;
+  padding-top: max(0.35em, env(safe-area-inset-top));
+  background: linear-gradient(180deg, rgba(28, 16, 10, 0.95), rgba(28, 16, 10, 0.78));
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+.fw-title {
+  font-size: 1.3em;
+  color: var(--gold-hi);
+  letter-spacing: 0.15em;
+  text-shadow: 0 2px 2px #000;
+  white-space: nowrap;
+}
+.fw-clock {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+.fw-clock b {
+  color: var(--gold-hi);
+  font-weight: normal;
+  margin: 0 0.1em;
+}
+.fw-ico {
+  width: 1.6em;
+  height: 1.6em;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  image-rendering: pixelated;
+}
+.fw-turn {
+  padding: 0.1em 0.6em;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-size: 0.9em;
+}
+.fw-turn.mine {
+  background: rgba(47, 98, 214, 0.55);
+  border: 1px solid #6f9bff;
+}
+.fw-turn.foe {
+  background: rgba(200, 48, 42, 0.5);
+  border: 1px solid #ff7d72;
+}
+.fw-tb {
+  padding: 0.25em 0.8em;
+  min-height: 2em;
+}
+
+.fw-roster {
+  position: absolute;
+  left: 0.4em;
+  top: 3.4em;
+  bottom: 9.5em;
+  width: 8.4em;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  pointer-events: auto;
+  scrollbar-width: none;
+}
+.fw-chip {
+  display: flex;
+  gap: 0.35em;
+  align-items: center;
+  padding: 0.2em 0.3em;
+  background: rgba(20, 12, 8, 0.82);
+  border: 1px solid rgba(217, 180, 90, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+.fw-chip.on {
+  border-color: var(--gold-hi);
+  box-shadow: 0 0 8px rgba(246, 217, 138, 0.5);
+}
+.fw-chip.done {
+  filter: grayscale(0.8) brightness(0.7);
+}
+.fw-chip .portrait.sm {
+  width: 2.2em;
+}
+.fw-chip-info {
+  gap: 0.15em;
+  flex: 1;
+  min-width: 0;
+}
+.fw-mini {
+  height: 0.3em;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.fw-mini i {
+  display: block;
+  height: 100%;
+}
+.fw-mini i.hp {
+  background: #e0544a;
+}
+.fw-mini i.sol {
+  background: #e8c45a;
+}
+
+.fw-card {
+  position: absolute;
+  left: 0.4em;
+  bottom: 0.4em;
+  bottom: max(0.4em, env(safe-area-inset-bottom));
+  width: min(23em, 60vw);
+  padding: 0.5em 0.6em;
+  pointer-events: none;
+}
+.fw-card.mine {
+  border-color: rgba(111, 155, 255, 0.8);
+}
+.fw-card.foe {
+  border-color: rgba(255, 125, 114, 0.8);
+}
+.fw-card-name {
+  font-size: 1.25em;
+  color: var(--gold-hi);
+}
+.fw-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1em 0.8em;
+  font-size: 0.88em;
+}
+.fw-bars {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.15em 0.4em;
+  align-items: center;
+  font-size: 0.8em;
+}
+.fw-bars .num {
+  text-align: right;
+  min-width: 4.5em;
+  color: var(--ink-dim);
+}
+.fw-small {
+  font-size: 0.8em;
+}
+.fw-tile {
+  width: auto;
+}
+.fw-smap {
+  width: 2.6em;
+  height: 2.6em;
+  border: 1px solid var(--line);
+}
+
+.fw-cmd {
+  position: absolute;
+  right: 0.5em;
+  bottom: 0.5em;
+  bottom: max(0.5em, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  padding: 0.5em;
+  min-width: 7em;
+  pointer-events: auto;
+  animation: pop 0.15s ease;
+}
+.fw-cmd .btn {
+  min-height: 2.3em;
+}
+.fw-cmd-title {
+  text-align: center;
+  color: var(--gold-hi);
+  font-size: 1.1em;
+}
+.fw-hint {
+  position: absolute;
+  right: 0.5em;
+  bottom: 0.5em;
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  padding: 0.4em 0.6em;
+  background: rgba(20, 12, 8, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  pointer-events: auto;
+  font-size: 0.92em;
+}
+
+.fw-log {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 3.3em;
+  width: min(30em, 50vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  pointer-events: none !important;
+  font-size: 0.85em;
+}
+.fw-log-line {
+  background: rgba(10, 6, 4, 0.7);
+  padding: 0.15em 0.6em;
+  border-radius: 3px;
+  text-shadow: 0 1px 1px #000;
+  animation: fw-logfade 8s ease forwards;
+}
+@keyframes fw-logfade {
+  0% {
+    opacity: 0;
+  }
+  4%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.fw-log-line.good {
+  color: #9fe0a8;
+}
+.fw-log-line.bad {
+  color: #ff9a8a;
+}
+.fw-zoom {
+  position: absolute;
+  right: 0.5em;
+  top: 3.6em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  pointer-events: auto;
+}
+.fw-zoom .btn {
+  padding: 0.1em 0.6em;
+  min-height: 2em;
+}
+
+.fw-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4em;
+  pointer-events: none !important;
+  animation: fw-banner 0.35s ease;
+}
+.fw-banner-img {
+  width: min(20em, 60vw);
+  image-rendering: auto;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+}
+.fw-banner-text {
+  font-size: 1.9em;
+  color: var(--gold-hi);
+  letter-spacing: 0.3em;
+  text-shadow: 0 2px 4px #000, 0 0 14px rgba(0, 0, 0, 0.9);
+  padding: 0.15em 1.4em;
+  background: linear-gradient(90deg, transparent, rgba(20, 10, 4, 0.8), transparent);
+}
+@keyframes fw-banner {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+.fw-vs {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  animation: fadein 0.2s ease;
+  pointer-events: auto;
+  z-index: 20;
+}
+.fw-vs-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+.fw-vs-row {
+  position: relative;
+  font-size: 1.3em;
+  display: flex;
+  align-items: center;
+  gap: 2.5em;
+}
+.fw-vs-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4em;
+  animation: pop 0.3s ease;
+}
+.fw-vs-name {
+  font-size: 1.6em;
+  color: var(--gold-hi);
+  text-shadow: 0 2px 3px #000;
+  letter-spacing: 0.2em;
+}
+.fw-vs-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.1em 1em;
+  font-size: 0.9em;
+  text-shadow: 0 1px 2px #000;
+}
+.fw-vs-icon {
+  width: 4.5em;
+}
+.fw-vs-kind {
+  font-size: 1.3em;
+  letter-spacing: 0.3em;
+  text-shadow: 0 2px 3px #000;
+}
+
+.fw-summary .fw-reason {
+  font-size: 1.3em;
+  color: var(--gold-hi);
+}
+.fw-armies {
+  display: flex;
+  gap: 1.2em;
+  flex-wrap: wrap;
+}
+.fw-army {
+  flex: 1;
+  min-width: 14em;
+  gap: 0.25em;
+}
+.fw-sum-row {
+  font-size: 0.9em;
+}
+.fw-magic-list {
+  max-height: 55vh;
+}
+
+@media (max-height: 480px) {
+  .fw-roster {
+    width: 7em;
+    bottom: 8.5em;
+  }
+  .fw-roster .fw-chip-info span {
+    font-size: 0.9em;
+  }
+  .fw-title {
+    display: none;
+  }
+}
+@media (max-height: 480px) {
+  .fw-card {
+    font-size: 0.82em;
+    width: min(20em, 50vw);
+  }
+  .fw-card .portrait {
+    width: 4em;
+  }
+  .fw-cmd {
+    font-size: 0.9em;
+  }
+}
+@media (max-width: 700px) {
+  .fw-left,
+  .fw-title {
+    display: none;
+  }
+  .fw-log {
+    width: 60vw;
+  }
+}
