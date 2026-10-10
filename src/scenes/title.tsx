@@ -18,8 +18,8 @@ export class TitleScene extends Scene {
     this.bg = new Backdrop(main.tex);
     this.root.addChild(this.bg);
     const mm = await shapes('mm');
-    for (let i = 1; i <= 10; i++) {
-      const f = mm.frame(`logofire${String(i).padStart(2, '0')}`);
+    const fires = await Promise.all(Array.from({ length: 10 }, (_, i) => mm.load(`logofire${String(i + 1).padStart(2, '0')}`)));
+    for (const f of fires) {
       if (!f) continue;
       const s = new Sprite(f.tex);
       s.visible = false;
@@ -38,6 +38,7 @@ export class TitleScene extends Scene {
       const b = this.bg.box;
       this.fire.forEach((s, i) => {
         s.visible = i === k;
+        s.alpha = 0.85;
         s.scale.set(b.scale);
         s.position.set(b.x, b.y);
       });
@@ -63,10 +64,10 @@ export class TitleScene extends Scene {
     this.renderUI(
       <div
         class="pass"
-        style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: '9vh' }}
+        style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingBottom: '12vh', paddingRight: 'max(3vw, calc(50vw - 66.6vh + 4vh))' }}
         onPointerDown={() => unlockAudio()}
       >
-        <div class="col" style={{ gap: '0.8em', alignItems: 'stretch', width: '13em' }}>
+        <div class="col" style={{ gap: '0.7em', alignItems: 'stretch', width: '12em', opacity: 0.94 }}>
           <Btn class="big primary" onClick={start}>
             新的游戏
           </Btn>
