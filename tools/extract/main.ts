@@ -30,9 +30,9 @@ function findGameDir(src: string): string {
   if (st.isFile()) {
     const dst = path.join(CACHE, 'installer');
     if (!fs.existsSync(path.join(dst, 'Sango3y/sango3.pak'))) {
-      log('unpacking installer (needs `cabextract`)…');
+      log('unpacking installer…');
       fs.rmSync(dst, { recursive: true, force: true });
-      unpackInstaller(src, dst);
+      unpackInstaller(src, dst, (rel) => /^Sango3y\/(sango3|music)\.pak$/i.test(rel));
     }
     return path.join(dst, 'Sango3y');
   }
@@ -131,20 +131,20 @@ type Single = [file: string, w: number, h: number, ax: number, ay: number];
 
 const BIG = 300 * 300;
 
-async function extractShapes(pak: Pak) {
-  const byDir = new Map<string, { name: string; entry: ReturnType<Pak['read']> extends Buffer ? string : never }[]>();
+async function extractShapes(pak: Pak, only?: string) {
   const dirs = new Map<string, string[]>();
   for (const e of pak.entries.values()) {
     const m = /^shape\/(.*)\.(shp|tga)$/i.exec(e.name);
     if (!m) continue;
     const rel = m[1].toLowerCase();
     const dir = path.posix.dirname(rel) === '.' ? '' : path.posix.dirname(rel);
+    if (only && !dir.startsWith(only)) continue;
     if (!dirs.has(dir)) dirs.set(dir, []);
     dirs.get(dir)!.push(e.name);
   }
-  void byDir;
   fs.mkdirSync(path.join(OUT, 'shape'), { recursive: true });
-  const index: Record<string, number> = {};
+  const indexFile = path.join(OUT, 'shape/index.json');
+  const index: Record<string, number> = only && fs.existsSync(indexFile) ? JSON.parse(fs.readFileSync(indexFile, 'utf8')) : {};
   let done = 0, failed = 0;
   const jobs = [...dirs.entries()];
   const pool = Math.max(2, os.cpus().length - 1);
@@ -316,7 +316,7 @@ async function main() {
   if (only.has('data')) extractData(pak);
   if (only.has('map')) extractMaps(pak);
   if (only.has('audio')) await extractAudio(pak, musicPak);
-  if (only.has('shape')) await extractShapes(pak);
+  if (only.has('shape')) await extractShapes(pak, process.argv[4]?.toLowerCase());
   writeJson('version.json', { generated: new Date().toISOString() });
   log('done →', OUT);
   void execFileSync;

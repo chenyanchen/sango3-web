@@ -9,16 +9,22 @@ const DEV: Record<string, () => Promise<{ default: () => Promise<void> | void }>
   strategy: () => import('./scenes/strategy/dev'),
 };
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
 async function boot() {
   await core.init();
   await loadDB();
   const dev = new URLSearchParams(location.search).get('dev');
   if (dev && DEV[dev]) {
     await (await DEV[dev]()).default();
+    document.getElementById('boot')?.remove();
     return;
   }
   const { go } = await import('./scenes/registry');
   await go.title();
+  document.getElementById('boot')?.remove();
 }
 
 boot().catch((e) => {

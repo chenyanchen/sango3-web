@@ -1,11 +1,10 @@
 // Smart Install Maker 5.x installer unpacker.
 // The installer stores its payload as a multi-volume Microsoft Cabinet set whose
 // "MSCF" signatures have been stripped. We locate every volume, restore the
-// signature, extract with `cabextract`, then map the numbered output files back
-// to their real paths using the file table in the installer header.
-import { execFileSync } from 'node:child_process';
+// signature and stream the wanted files out (see cab.ts), mapping the numbered
+// cabinet entries back to their real paths via the installer's file table.
 import fs from 'node:fs';
-import path from 'node:path';
+import { extractCabSet, type CabVolume } from './cab.ts';
 
 const gbk = new TextDecoder('gbk');
 
@@ -44,17 +43,12 @@ function readFileTable(fd: number, overlay: number): string[] {
   return out;
 }
 
-export function unpackInstaller(exe: string, outDir: string): void {
+export function unpackInstaller(exe: string, outDir: string, want: (rel: string) => boolean = () => true): void {
   const fd = fs.openSync(exe, 'r');
   const size = fs.fstatSync(fd).size;
   const overlay = findOverlay(Buffer.from(readHead(fd, 4096)));
   const files = readFileTable(fd, overlay);
   if (files.length === 0) throw new Error('not a Smart Install Maker installer');
-
-  const cabDir = path.join(outDir, '.cabs');
-  const rawDir = path.join(outDir, '.raw');
-  fs.mkdirSync(cabDir, { recursive: true });
-  fs.mkdirSync(rawDir, { recursive: true });
 
   // Scan for stripped CFHEADERs: [reserved1=0][cbCabinet][reserved2=0][coffFiles][reserved3=0][3][1]
   const CHUNK = 64 << 20;
@@ -62,8 +56,8 @@ export function unpackInstaller(exe: string, outDir: string): void {
   const cabs: { off: number; size: number }[] = [];
   for (let pos = overlay; pos < size; pos += CHUNK) {
     const n = fs.readSync(fd, buf, 0, CHUNK + 64, pos);
-    for (let i = 0; i + 26 < n && i < CHUNK; i++) {
-      if (buf[i + 24] !== 3 || buf[i + 25] !== 1) continue;
+    for (let i = 0; i + 22 < n && i < CHUNK; i++) {
+      if (buf[i + 20] !== 3 || buf[i + 21] !== 1) continue;
       if (buf.readUInt32LE(i) !== 0 || buf.readUInt32LE(i + 8) !== 0 || buf.readUInt32LE(i + 16) !== 0) continue;
       const cb = buf.readUInt32LE(i + 4);
       const coff = buf.readUInt32LE(i + 12);
@@ -72,27 +66,27 @@ export function unpackInstaller(exe: string, outDir: string): void {
       i += cb - 5;
     }
   }
-  if (cabs.length === 0) throw new Error('no cabinet volumes found');
-  // Volume 0 holds installer temp files; volumes 1.. are named 0000.tmp, 0001.tmp, ...
-  cabs.forEach((c, idx) => {
-    const data = Buffer.alloc(c.size);
-    data.write('MSCF', 0, 'latin1');
-    fs.readSync(fd, data, 4, c.size - 4, c.off);
-    const name = idx === 0 ? 'setup.cab' : `${String(idx - 1).padStart(4, '0')}.tmp`;
-    fs.writeFileSync(path.join(cabDir, name), data);
+  if (cabs.length < 2) throw new Error('no cabinet volumes found');
+  // Volume 0 holds installer temp files; the payload set starts at volume 1.
+  const vols: CabVolume[] = cabs.slice(1).map((c) => ({
+    size: c.size,
+    read(off: number, len: number) {
+      const b = Buffer.alloc(len);
+      let o = 0;
+      if (off < 4) {
+        const sig = Buffer.from('MSCF').subarray(off, Math.min(4, off + len));
+        sig.copy(b, 0);
+        o = sig.length;
+      }
+      if (o < len) fs.readSync(fd, b, o, len - o, c.off + (off + o - 4));
+      return b;
+    },
+  }));
+  extractCabSet(vols, outDir, (name) => {
+    const rel = files[Number(name)];
+    return rel && want(rel) ? rel : null;
   });
   fs.closeSync(fd);
-
-  execFileSync('cabextract', ['-q', '-d', rawDir, path.join(cabDir, '0000.tmp')], { stdio: 'inherit' });
-  files.forEach((rel, i) => {
-    const src = path.join(rawDir, String(i));
-    if (!fs.existsSync(src)) return;
-    const dst = path.join(outDir, rel);
-    fs.mkdirSync(path.dirname(dst), { recursive: true });
-    fs.renameSync(src, dst);
-  });
-  fs.rmSync(cabDir, { recursive: true, force: true });
-  fs.rmSync(rawDir, { recursive: true, force: true });
 }
 
 function readHead(fd: number, n: number): Uint8Array {

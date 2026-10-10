@@ -63,6 +63,7 @@ const G6 = new Uint8Array(64).map((_, i) => Math.round((i * 255) / 63));
 export function decodeShp(d: Buffer): Image | null {
   if (d.length < 0x24 || d.toString('latin1', 0, 4) !== 'TLHS') return null;
   const type = d.readInt32LE(8);
+  if (type === 4) return decodeShp32(d);
   if (type !== 2) return null;
   const w = d.readInt32LE(0x14);
   const h = d.readInt32LE(0x18);
@@ -91,6 +92,31 @@ export function decodeShp(d: Buffer): Image | null {
     }
   }
   return { w, h, ax, ay, rgba };
+}
+
+// Type 4 (32-bit, only the map flags): header as type 2 but anchor at 0x1c/0x20,
+// row table at 0x50; row := u32 n | u32 dataOffset | u16 x | u16 0xFFFF | u32 ?
+// pixel data is BGRA.
+function decodeShp32(d: Buffer): Image | null {
+  const w = d.readInt32LE(0x14);
+  const h = d.readInt32LE(0x18);
+  if (w <= 0 || h <= 0 || w > 4096 || h > 4096 || 0x50 + h * 4 > d.length) return null;
+  const rgba = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const r = d.readUInt32LE(0x50 + y * 4);
+    if (r + 10 > d.length) continue;
+    const n = d.readUInt32LE(r);
+    const off = d.readUInt32LE(r + 4);
+    const x0 = d.readUInt16LE(r + 8);
+    for (let i = 0; i < n && x0 + i < w && off + i * 4 + 4 <= d.length; i++) {
+      const s = off + i * 4, k = (y * w + x0 + i) * 4;
+      rgba[k] = d[s + 2];
+      rgba[k + 1] = d[s + 1];
+      rgba[k + 2] = d[s];
+      rgba[k + 3] = d[s + 3];
+    }
+  }
+  return { w, h, ax: d.readInt32LE(0x1c), ay: d.readInt32LE(0x20), rgba };
 }
 
 /** Crops fully transparent borders, adjusting the anchor. */
