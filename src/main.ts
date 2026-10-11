@@ -7,6 +7,7 @@ import 'pixi.js/mesh';
 import 'pixi.js/filters';
 import './style.css';
 import { loadDB } from './data/db';
+import { assetMode, setAssetMode } from './engine/assets';
 import { core, showError } from './engine/core';
 
 const DEV: Record<string, () => Promise<{ default: () => Promise<void> | void }>> = {
@@ -23,15 +24,16 @@ const DEV: Record<string, () => Promise<{ default: () => Promise<void> | void }>
 };
 
 async function boot() {
-  if (import.meta.env.PROD) {
-    // The service worker serves imported assets (see src/import); without assets
-    // on the host, the player imports their own installer first.
-    const { ensureServiceWorker, hasAssets, runImport } = await import('./import');
-    const swOk = await ensureServiceWorker();
-    if (!(await hasAssets())) {
-      document.getElementById('boot')?.remove();
-      await runImport(swOk);
-    }
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    // offline cache; also serves original assets imported in the browser (src/import)
+    const { ensureServiceWorker } = await import('./import');
+    await ensureServiceWorker();
+  }
+  if (assetMode === 'orig' && !(await (await import('./import')).hasOriginalAssets())) {
+    // imported assets were cleared (or never extracted here): fall back to the generated set
+    setAssetMode('gen');
+    location.reload();
+    return;
   }
   await core.init();
   await loadDB();

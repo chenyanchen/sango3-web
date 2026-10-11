@@ -4,14 +4,17 @@
 // worker (public/sw.js) then serves it under ./assets/.
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
-import { assetUrl } from '../engine/assets';
+import { setAssetMode } from '../engine/assets';
 import { ASSET_FORMAT } from '../extract/pipeline';
 import { ASSET_CACHE, type Job, type WorkerMsg } from './protocol';
 
-/** True when ./assets/ is served (bundled, `pnpm extract`ed, or imported earlier). */
-export async function hasAssets(): Promise<boolean> {
+/** Where the original assets live (imported into Cache Storage, or `pnpm extract`ed). */
+const ORIG_BASE = () => new URL(import.meta.env.BASE_URL + 'assets-orig/', location.href).href;
+
+/** True when the original assets are available (imported earlier, or served by the host). */
+export async function hasOriginalAssets(): Promise<boolean> {
   try {
-    const r = await fetch(assetUrl('version.json'), { cache: 'no-store' });
+    const r = await fetch(ORIG_BASE() + 'version.json', { cache: 'no-store' });
     if (!r.ok) return false;
     const v = (await r.json()) as { format?: number };
     return (v.format ?? ASSET_FORMAT) === ASSET_FORMAT;
@@ -42,12 +45,18 @@ export async function clearImportedAssets() {
   await caches.delete(ASSET_CACHE);
 }
 
-/** Shows the import screen; resolves once the assets are in place. */
-export function runImport(swOk: boolean): Promise<void> {
+/** Shows the import screen; resolves true once the original assets are in place, false if cancelled. */
+export function runImport(swOk: boolean): Promise<boolean> {
   // own layer above #fader (which stays opaque until the first scene fades in)
   const host = document.body.appendChild(document.createElement('div'));
   return new Promise((resolve) => {
-    render(<ImportUI swOk={swOk} onDone={() => (render(null, host), host.remove(), resolve())} />, host);
+    const done = (ok: boolean) => {
+      render(null, host);
+      host.remove();
+      if (ok) setAssetMode('orig');
+      resolve(ok);
+    };
+    render(<ImportUI swOk={swOk} onDone={() => done(true)} onCancel={() => done(false)} />, host);
   });
 }
 
@@ -98,7 +107,7 @@ class Pool {
 }
 
 async function convert(files: File[], report: (p: Progress) => void) {
-  const base = new URL(assetUrl(''), location.href).href;
+  const base = ORIG_BASE();
   const byName = (re: RegExp) => files.find((f) => re.test(f.name));
   const exe = byName(/\.exe$/i);
   let sango = byName(/^sango3\.pak$/i) ?? null;
@@ -154,7 +163,7 @@ async function convert(files: File[], report: (p: Progress) => void) {
   }
 }
 
-function ImportUI(props: { swOk: boolean; onDone: () => void }) {
+function ImportUI(props: { swOk: boolean; onDone: () => void; onCancel: () => void }) {
   const [prog, setProg] = useState<Progress | null>(null);
   const [err, setErr] = useState('');
   const [drag, setDrag] = useState(false);
@@ -199,8 +208,8 @@ function ImportUI(props: { swOk: boolean; onDone: () => void }) {
       }}
     >
       <div class={`panel importer-box ${drag ? 'drag' : ''}`}>
-        <h1>三国群英传 III</h1>
-        <div class="sub">网页复刻版</div>
+        <h1>导入原版素材</h1>
+        <div class="sub">三国群英传 III</div>
         {!props.swOk ? (
           <p class="err">
             当前浏览器无法保存游戏素材（不支持 Service Worker，或处于无痕/隐私模式）。请换用最新版的 Chrome、Edge、Firefox 或 Safari，并关闭无痕模式。
@@ -208,8 +217,8 @@ function ImportUI(props: { swOk: boolean; onDone: () => void }) {
         ) : (
           <>
             <p>
-              本网站<b>不包含</b>原版游戏素材。请选择你自己的《三国群英传3》安装包（<code>.exe</code>），
-              或游戏目录中的 <code>sango3.pak</code>（同时选上 <code>MUSIC.PAK</code> 就有背景音乐）。
+              本站默认使用程序生成的水墨素材与重新编写的剧本。如果你有《三国群英传3》，可以改用原版的画面、音乐与数据：
+              选择你自己的安装包（<code>.exe</code>），或游戏目录中的 <code>sango3.pak</code>（同时选上 <code>MUSIC.PAK</code> 就有背景音乐）。
             </p>
             <p class="dim">所有处理都在你的浏览器里完成，文件不会上传。首次导入需要一两分钟，完成后可离线游玩。</p>
             {busy ? (
@@ -229,9 +238,19 @@ function ImportUI(props: { swOk: boolean; onDone: () => void }) {
                 <button class="btn big" onClick={() => pick('.pak,.PAK')}>选择 PAK 文件</button>
               </div>
             )}
-            {!busy && <p class="dim small">也可以把文件直接拖到这里。</p>}
+            {!busy && <p class="dim small">也可以把文件直接拖到这里。两套素材的存档互相独立。</p>}
+            {!busy && (
+              <div class="importer-actions">
+                <button class="btn" onClick={props.onCancel}>返回</button>
+              </div>
+            )}
             {err && <p class="err">导入失败：{err}</p>}
           </>
+        )}
+        {!props.swOk && (
+          <div class="importer-actions">
+            <button class="btn" onClick={props.onCancel}>返回</button>
+          </div>
         )}
       </div>
     </div>

@@ -5,3 +5,4 @@ public/assets
 *.log
 .DS_Store
 .cache-*.log
+public/assets-orig

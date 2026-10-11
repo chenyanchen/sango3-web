@@ -9,7 +9,10 @@
     "preview": "vite preview --host",
     "extract": "tsx tools/extract/main.ts",
     "typecheck": "tsc --noEmit",
-    "shot": "tsx tools/shot.ts"
+    "shot": "tsx tools/shot.ts",
+    "gen": "tsx tools/gen/main.ts",
+    "gen:spec": "tsx tools/gen/spec.ts",
+    "gen:sheet": "tsx tools/gen/sheet.ts"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

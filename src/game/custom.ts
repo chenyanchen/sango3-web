@@ -2,6 +2,7 @@
 // NewGeneral.sav). They are injected into the static DB as extra GeneralDefs
 // (ids after the original 421) and appear as free generals in new games.
 import { db, type GeneralDef } from '../data/db';
+import { storageKey } from '../engine/assets';
 
 export interface CustomGeneral {
   name: string;
@@ -14,7 +15,7 @@ export interface CustomGeneral {
   city: string; // starting city ('' = random)
 }
 
-const KEY = 'sg3.custom';
+const KEY = storageKey('custom');
 export const MAX_CUSTOM = 20;
 
 export function listCustom(): CustomGeneral[] {

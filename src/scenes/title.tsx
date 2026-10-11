@@ -1,6 +1,6 @@
 // 主选单 (title screen).
 import { Sprite } from 'pixi.js';
-import { shape, shapes } from '../engine/assets';
+import { assetMode, setAssetMode, shape, shapes } from '../engine/assets';
 import { playMusic, setVolumes, settings, sfx, unlockAudio } from '../engine/audio';
 import { core, Scene } from '../engine/core';
 import { Backdrop } from '../engine/view';
@@ -145,20 +145,41 @@ export function optionsBox(): Promise<void> {
           <span style={{ width: '5em' }}>全屏</span>
           <Btn onClick={() => toggleFullscreen()}>切换全屏</Btn>
         </label>
-        {import.meta.env.PROD && (
-          <label class="row">
-            <span style={{ width: '5em' }}>游戏素材</span>
+        <label class="row">
+          <span style={{ width: '5em' }}>游戏素材</span>
+          <span class="grow">{assetMode === 'orig' ? '原版素材' : '水墨版（程序生成）'}</span>
+          {assetMode === 'orig' ? (
+            <>
+              <Btn onClick={() => (setAssetMode('gen'), location.reload())}>切换到水墨版</Btn>
+              {import.meta.env.PROD && (
+                <Btn
+                  onClick={async () => {
+                    if (!(await confirmBox('清除浏览器里已导入的原版素材？原版素材的存档会保留。'))) return;
+                    await (await import('../import')).clearImportedAssets();
+                    setAssetMode('gen');
+                    location.reload();
+                  }}
+                >
+                  清除
+                </Btn>
+              )}
+            </>
+          ) : (
             <Btn
               onClick={async () => {
-                if (!(await confirmBox('清除浏览器里已导入的游戏素材？下次打开需要重新选择安装包（存档不受影响）。'))) return;
-                await (await import('../import')).clearImportedAssets();
+                const imp = await import('../import');
+                if (!(await imp.hasOriginalAssets())) {
+                  if (!import.meta.env.PROD) return toast('开发模式下请先运行 pnpm extract 生成 public/assets-orig');
+                  if (!(await imp.runImport(await imp.ensureServiceWorker()))) return;
+                }
+                setAssetMode('orig');
                 location.reload();
               }}
             >
-              清除并重新导入
+              使用原版素材…
             </Btn>
-          </label>
-        )}
+          )}
+        </label>
       </div>
       <div class="actions">
         <Btn class="primary" onClick={() => close()}>

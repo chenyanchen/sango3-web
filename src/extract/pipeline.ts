@@ -142,30 +142,43 @@ export function dirKey(dir: string) {
   return dir ? dir.replaceAll('/', '_') : '_root';
 }
 
+/** One frame to pack: standalone image if large, else trimmed into an atlas page. */
+export interface NamedImage {
+  name: string;
+  img: Image;
+}
+
 /**
  * Converts one shape directory: small frames are trimmed and packed into
  * atlas pages, large ones become standalone images. Writes the images and
  * `shape/<key>.json`.
  */
 export async function packDir(pak: Pak, dir: string, files: string[], encode: EncodeImage, emit: Emit) {
+  const images: NamedImage[] = [];
+  const seen = new Set<string>();
+  let failed = 0;
+  for (const f of files) {
+    const name = stripExt(basename(f)).toLowerCase();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const buf = pak.read(f);
+    const img = /\.tga$/i.test(f) ? decodeTga(buf) : decodeShp(buf);
+    if (img) images.push({ name, img });
+    else failed++;
+  }
+  return { ...(await packImages(dir, images, encode, emit)), failed };
+}
+
+export async function packImages(dir: string, images: NamedImage[], encode: EncodeImage, emit: Emit) {
   const key = dirKey(dir);
   const frames: Record<string, Frame> = {};
   const singles: Record<string, Single> = {};
   const small: { name: string; img: Image & { ox: number; oy: number } }[] = [];
-  let failed = 0;
   const writes: Promise<unknown>[] = [];
   const put = (name: string, p: ReturnType<EncodeImage>) =>
     writes.push(p.then((r) => emit(`shape/${name}.${r.ext}`, r.data, r.type)).then(() => undefined));
   const ext: Record<string, string> = {};
-  for (const f of files) {
-    const name = stripExt(basename(f)).toLowerCase();
-    if (frames[name] || singles[name]) continue;
-    const buf = pak.read(f);
-    const img = /\.tga$/i.test(f) ? decodeTga(buf) : decodeShp(buf);
-    if (!img) {
-      failed++;
-      continue;
-    }
+  for (const { name, img } of images) {
     if (img.w * img.h >= BIG) {
       const base = `${key}__${name}`;
       const p = encode(img.rgba, img.w, img.h, 'single', isOpaque(img.rgba));
@@ -203,5 +216,5 @@ export async function packDir(pak: Pak, dir: string, files: string[], encode: En
   for (let i = 0; i < pages.length; i++) pages[i] += '.' + ext[pages[i]];
   for (const s of Object.values(singles)) s[0] += '.' + ext[s[0]];
   await emit(`shape/${key}.json`, JSON.stringify({ pages, frames, singles }), 'application/json');
-  return { count: Object.keys(frames).length + Object.keys(singles).length, failed };
+  return { count: Object.keys(frames).length + Object.keys(singles).length };
 }

@@ -1,8 +1,11 @@
-// Service worker: serves game assets from Cache Storage. Assets either come
-// from the host (cached on first use) or were imported in the browser from the
-// player's own installer (src/import writes them into the same cache).
-// The app shell is network-first so updates are picked up.
+// Service worker.
+//  - assets-orig/: the player's original assets, imported in the browser
+//    (src/import writes them into the ASSETS cache) — cache-first.
+//  - assets/ (generated set shipped with the site) and the app shell:
+//    network-first with a cache fallback, so updates are picked up and the
+//    game still runs offline.
 const ASSETS = 'sg3-assets-v1';
+const GEN = 'sg3-gen-v1';
 const SHELL = 'sg3-shell-v1';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -47,16 +50,21 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
-  if (url.pathname.includes('/assets/')) {
+  if (url.pathname.includes('/assets-orig/')) {
     e.respondWith(serveAsset(req, url));
     return;
   }
+  if (req.headers.has('range')) return;
+  const bucket = url.pathname.includes('/assets/') ? GEN : SHELL;
   e.respondWith(
     fetch(req)
       .then((res) => {
-        if (res.ok) caches.open(SHELL).then((c) => c.put(req, res.clone()));
+        if (res.ok && res.status === 200) {
+          const copy = res.clone();
+          caches.open(bucket).then((c) => c.put(req, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(req).then((r) => r || Response.error())),
+      .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || Response.error())),
   );
 });

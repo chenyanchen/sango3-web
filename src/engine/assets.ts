@@ -5,7 +5,33 @@
 // standalone images (large frames). Frames are addressed by lower-case name.
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
-const BASE = import.meta.env.BASE_URL + 'assets/';
+/**
+ * Which asset set the game runs on: 'gen' = the code-generated set shipped with
+ * the site (public/assets, see tools/gen), 'orig' = the player's own original
+ * game imported in the browser or extracted with `pnpm extract` (assets-orig/).
+ * The two sets carry different game data, so saves are kept apart (storageKey).
+ */
+export type AssetMode = 'gen' | 'orig';
+const MODE_KEY = 'sg3.assetMode';
+export const assetMode: AssetMode = (() => {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'orig' ? 'orig' : 'gen';
+  } catch {
+    return 'gen';
+  }
+})();
+export function setAssetMode(m: AssetMode) {
+  try {
+    localStorage.setItem(MODE_KEY, m);
+  } catch {
+    /* ignore */
+  }
+}
+/** localStorage key for data tied to the asset set (saves, custom generals). */
+export const storageKey = (k: string) => (assetMode === 'orig' ? `sg3.${k}` : `sg3.gen.${k}`);
+
+export const ASSET_DIR = assetMode === 'orig' ? 'assets-orig/' : 'assets/';
+const BASE = import.meta.env.BASE_URL + ASSET_DIR;
 export const assetUrl = (rel: string) => BASE + rel;
 
 export interface Frame {

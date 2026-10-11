@@ -2,7 +2,7 @@
 //
 //   pnpm extract <三国群英传3合集.exe | game dir containing sango3.pak> [data,shape,audio,map] [dir-prefix]
 //
-// Output goes to public/assets (git-ignored; the original assets are never
+// Output goes to public/assets-orig (git-ignored; the original assets are never
 // redistributed with the source code). The same conversion runs in the browser
 // (src/import) for players who bring their own installer.
 import { execFile, spawnSync } from 'node:child_process';
@@ -18,7 +18,7 @@ import { unpackInstaller } from '../../src/extract/installer.ts';
 import { ASSET_FORMAT, extractData, extractRaw, musicTracks, packDir, shapeDirs, type Emit, type EncodeImage } from '../../src/extract/pipeline.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
-const OUT = process.env.SG3_OUT ? path.resolve(process.env.SG3_OUT) : path.join(ROOT, 'public/assets');
+const OUT = process.env.SG3_OUT ? path.resolve(process.env.SG3_OUT) : path.join(ROOT, 'public/assets-orig');
 const CACHE = path.join(ROOT, '.cache');
 
 function log(...a: unknown[]) {

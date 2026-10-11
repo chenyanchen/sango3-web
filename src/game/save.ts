@@ -1,10 +1,11 @@
 // Save slots in localStorage (JSON). Slot 0 is the autosave.
 import type { GeneralDef } from '../data/db';
+import { storageKey } from '../engine/assets';
 import { customDefsInDb, restoreCustomDefs } from './custom';
 import { G, setState, type GameState } from './state';
 
 export const SLOTS = 10;
-const key = (i: number) => `sg3.save.${i}`;
+const key = (i: number) => storageKey(`save.${i}`);
 
 export interface SaveInfo {
   slot: number;
