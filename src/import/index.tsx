@@ -209,7 +209,7 @@ function ImportUI(props: { swOk: boolean; onDone: () => void; onCancel: () => vo
     >
       <div class={`panel importer-box ${drag ? 'drag' : ''}`}>
         <h1>导入原版素材</h1>
-        <div class="sub">三国群英传 III</div>
+        <div class="sub">适用于《三国群英传3》</div>
         {!props.swOk ? (
           <p class="err">
             当前浏览器无法保存游戏素材（不支持 Service Worker，或处于无痕/隐私模式）。请换用最新版的 Chrome、Edge、Firefox 或 Safari，并关闭无痕模式。

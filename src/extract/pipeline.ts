@@ -205,7 +205,8 @@ export async function packImages(dir: string, images: NamedImage[], encode: Enco
         frames[name] = [pi, r.x, r.y, img.w, img.h, img.ax - img.ox, img.ay - img.oy];
       }
       const base = `${key}_${pi}`;
-      const p = encode(px, W, H, 'page', false);
+      // "opaque" = every frame is opaque (only the packing gaps are transparent): lets the encoder go lossy
+      const p = encode(px, W, H, 'page', bin.rects.every((r) => isOpaque(r.data.img.rgba)));
       pages.push(base);
       writes.push(p.then((r) => (ext[base] = r.ext)));
       put(base, p);

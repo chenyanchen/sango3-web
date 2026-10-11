@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Mp3Encoder } from '@breezystack/lamejs';
+import { Worker } from 'node:worker_threads';
 import sharp from 'sharp';
 import { ASSET_FORMAT, packImages, type EncodeImage, type NamedImage } from '../../src/extract/pipeline.ts';
 import type { AudioModule, Box, DataModule, FrameJob, FrameUse, IniSection, MapModule, PaintModule, PaintOut, Painter } from './types.ts';
@@ -31,7 +31,17 @@ async function discover<T>(sub: string): Promise<{ file: string; mod: T }[]> {
   const dir = path.join(import.meta.dirname, sub);
   if (!fs.existsSync(dir)) return [];
   const files = fs.readdirSync(dir).filter((f) => /\.tsx?$/.test(f) && !f.startsWith('_') && !f.endsWith('.d.ts')).sort();
-  return Promise.all(files.map(async (f) => ({ file: f, mod: (await import(pathToFileURL(path.join(dir, f)).href)) as T })));
+  const out: { file: string; mod: T }[] = [];
+  for (const f of files) {
+    try {
+      out.push({ file: f, mod: (await import(pathToFileURL(path.join(dir, f)).href)) as T });
+    } catch (e) {
+      // one broken module must not stop the others (CI still fails on typecheck)
+      console.error(`[gen] skipping ${sub}/${f}:`, e instanceof Error ? e.message : e);
+      if (process.env.CI) throw e;
+    }
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ shapes
@@ -102,7 +112,10 @@ export async function rasterize(o: PaintOut): Promise<NamedImage['img']> {
 
 const encode: EncodeImage = async (rgba, w, h, kind, opaque) => {
   const img = sharp(Buffer.from(rgba.buffer, rgba.byteOffset, rgba.byteLength), { raw: { width: w, height: h, channels: 4 } });
-  const opts = kind === 'page' ? { lossless: true, effort: 4 } : opaque ? { quality: 88, effort: 5 } : { quality: 88, alphaQuality: 100, effort: 5 };
+  // Painted ink-wash textures barely compress losslessly; lossy WebP (alpha kept at full
+  // quality) is visually identical at game scale and several times smaller.
+  const opts = opaque ? { quality: 86, effort: 5 } : { quality: 86, alphaQuality: 100, effort: 5 };
+  void kind;
   return { data: await img.webp(opts).toBuffer(), ext: 'webp', type: 'image/webp' };
 };
 
@@ -133,6 +146,11 @@ async function genShapes(prefixes: string[] | null) {
       }
     });
     images.sort((a, b) => (a.name < b.name ? -1 : 1));
+    // drop this dir's previous output (a shrinking dir would leave stale pages)
+    const key = dir ? dir.replaceAll('/', '_') : '_root';
+    const sdir = path.join(OUT, 'shape');
+    if (fs.existsSync(sdir))
+      for (const f of fs.readdirSync(sdir)) if (f === key + '.json' || new RegExp(`^${key}(_\\d+|__.+)\\.(webp|png)$`).test(f)) fs.rmSync(path.join(sdir, f));
     await packImages(dir, images, encode, (rel, data) => write(rel, typeof data === 'string' ? data : (data as Uint8Array)));
     stats.set(p.id, (stats.get(p.id) ?? 0) + jobs.length);
     if (++done % 25 === 0) log(`shapes ${done}/${dirs.length}`);
@@ -149,7 +167,9 @@ async function genData() {
     const sprites: Record<string, unknown> = {};
     for (const [a, s] of Object.entries(o.sprites))
       sprites[a] = { frames: s.frames.map(([f, d, ev]) => (ev ? { f, d, ev } : { f, d })), loop: s.loop };
-    objs[id] = { name: '', dir: o.dir, flags: o.flags, sprites };
+    // blood (42065) is an ink splash in the generated set: drawn normally, not additively
+    const flags = id === '42065' ? o.flags.filter((f) => f !== 'SP_ATTRIB_WHITELIGHT') : o.flags;
+    objs[id] = { name: '', dir: o.dir, flags, sprites };
   }
   write('data/objects.json', JSON.stringify(objs));
   const files: Record<string, IniSection[]> = {};
@@ -190,17 +210,36 @@ export function wav(rate: number, chans: Float32Array[]): Uint8Array {
   return new Uint8Array(b.buffer);
 }
 
-function mp3(rate: number, left: Float32Array, right: Float32Array, kbps = 128): Uint8Array {
-  const enc = new Mp3Encoder(2, rate, kbps);
-  const toI16 = (f: Float32Array) => Int16Array.from(f, (v) => Math.max(-1, Math.min(1, v)) * 32767);
-  const L = toI16(left), R = toI16(right);
-  const parts: Uint8Array[] = [];
-  for (let i = 0; i < L.length; i += 1152 * 32) parts.push(enc.encodeBuffer(L.subarray(i, i + 1152 * 32), R.subarray(i, i + 1152 * 32)).slice());
-  parts.push(enc.flush().slice());
-  const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0));
-  let o = 0;
-  for (const p of parts) (out.set(p, o), (o += p.length));
-  return out;
+/** MP3 encoding runs on worker threads (lamejs is synchronous and slow). */
+function mp3Pool(n: number) {
+  const workers = Array.from({ length: n }, () => new Worker(new URL('./mp3worker.mjs', import.meta.url)));
+  const free = [...workers];
+  const waiting: (() => void)[] = [];
+  let seq = 0;
+  return {
+    async encode(rate: number, left: Float32Array, right: Float32Array, kbps = 128): Promise<Uint8Array> {
+      while (!free.length) await new Promise<void>((r) => waiting.push(r));
+      const w = free.pop()!;
+      const id = ++seq;
+      try {
+        return await new Promise<Uint8Array>((res, rej) => {
+          const onMsg = (m: { id: number; data: Uint8Array }) => {
+            if (m.id !== id) return;
+            w.off('message', onMsg);
+            w.off('error', rej);
+            res(m.data);
+          };
+          w.on('message', onMsg);
+          w.once('error', rej);
+          w.postMessage({ id, rate, left, right, kbps }, [left.buffer as ArrayBuffer, right.buffer as ArrayBuffer]);
+        });
+      } finally {
+        free.push(w);
+        waiting.shift()?.();
+      }
+    },
+    close: () => Promise.all(workers.map((w) => w.terminate())),
+  };
 }
 
 async function genAudio(only: string[] | null) {
@@ -213,11 +252,15 @@ async function genAudio(only: string[] | null) {
     const r = m?.sound!(name);
     if (r) (write(`sound/${name}.wav`, wav(r.rate, [r.data])), ns++);
   }
-  await pool(want.music.filter((n) => !only || only.some((p) => n.startsWith(p))), Math.max(2, os.cpus().length - 1), async (name) => {
+  const enc = mp3Pool(Math.max(2, os.cpus().length - 1));
+  const jobs: Promise<void>[] = [];
+  for (const name of want.music.filter((n) => !only || only.some((p) => n.startsWith(p)))) {
     const m = mods.find((x) => x.music?.includes(name) && x.track);
-    const r = m?.track!(name);
-    if (r) (write(`music/${name}.mp3`, mp3(r.rate, r.left, r.right)), nm++);
-  });
+    const r = m?.track!(name); // synthesis is synchronous; encoding overlaps with the next track
+    if (r) jobs.push(enc.encode(r.rate, r.left, r.right).then((d) => (write(`music/${name}.mp3`, d), void nm++)));
+  }
+  await Promise.all(jobs);
+  await enc.close();
   log(`audio: ${ns}/${want.sound.length} sounds, ${nm}/${want.music.length} tracks`);
 }
 
@@ -226,7 +269,7 @@ async function main() {
   const args = process.argv.slice(2);
   const parts = new Set(args.filter((a) => !a.includes('=')));
   const opt = (k: string) => args.find((a) => a.startsWith(k + '='))?.slice(k.length + 1).split(',').filter(Boolean) ?? null;
-  const all = parts.size === 0;
+  const all = args.length === 0;
   if (all || parts.has('data')) await genData();
   if (all || parts.has('maps')) await genMaps();
   if (all || parts.has('shapes') || opt('shapes')) await genShapes(opt('shapes'));

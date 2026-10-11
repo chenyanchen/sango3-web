@@ -1,5 +1,6 @@
-# Builds the game (code only, no original assets) and deploys it to GitHub Pages.
-# Players import their own installer in the browser on first visit (src/import).
+# Generates the original asset set (tools/gen: art, data, maps, audio — no
+# copyrighted content), builds the game and deploys it to GitHub Pages.
+# Players who own the original game can additionally import it in the browser.
 name: Deploy to GitHub Pages
 
 on:
@@ -27,9 +28,20 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: CJK fonts for calligraphy in generated art
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-arphic-ukai fonts-noto-cjk >/dev/null
+      - name: Cache generated assets
+        id: gencache
+        uses: actions/cache@v4
+        with:
+          path: public/assets
+          key: gen-${{ hashFiles('tools/gen/**', 'src/extract/pipeline.ts', 'pnpm-lock.yaml') }}
+      - name: Generate assets
+        if: steps.gencache.outputs.cache-hit != 'true'
+        run: pnpm gen
       - run: pnpm build
-      - name: Ensure no game assets are published
-        run: test ! -e dist/assets
+      - name: Ensure only generated assets are published
+        run: test -f dist/assets/version.json && test ! -e dist/assets-orig
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

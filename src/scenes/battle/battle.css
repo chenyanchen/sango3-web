@@ -157,6 +157,8 @@
   position: relative;
   height: 1.35em;
   margin-top: 0.1em;
+  /* sized by the frame image so the fill's % offsets line up with the blade */
+  width: max-content;
 }
 .bt-sword img {
   position: absolute;
@@ -165,6 +167,8 @@
   image-rendering: auto;
 }
 .bt-sword .frame {
+  position: relative;
+  display: block;
   left: 0;
 }
 .bt-sword .fill {
@@ -173,6 +177,9 @@
   width: 79.5%;
   height: 100%;
   object-fit: fill;
+}
+.bt-sword.r {
+  margin-left: auto;
 }
 .bt-sword.r .frame {
   left: auto;

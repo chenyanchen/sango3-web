@@ -3,7 +3,7 @@
 // sparks, blood, damage numbers, slow-mo on the final blow).
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { AnimSprite, loadObject, type LoadedObject } from '../../engine/anim';
-import { shapes, type Frame } from '../../engine/assets';
+import { assetMode, shapes, type Frame } from '../../engine/assets';
 import { playMusic, preloadSfx, sfx, unlockAudio } from '../../engine/audio';
 import { core, Scene } from '../../engine/core';
 import { modalKey } from '../../engine/keys';
@@ -593,7 +593,8 @@ export class DuelScene extends Scene {
     d.flash = -1; // red flash
     d.knock(e.ko ? 50 : sup ? (e.last ? 40 : 8) : heavy ? 26 : e.move === 'counter' ? 18 : 9);
     // effects
-    const blood = new FrameFx(this.bloodFrames, 40, 'add');
+    // the original's blood is drawn additively; the generated ink splash is drawn normally
+    const blood = new FrameFx(this.bloodFrames, 40, assetMode === 'orig' ? 'add' : 'normal');
     blood.obj.scale.set(heavy || sup || e.crit ? 0.9 : 0.6);
     blood.obj.scale.x *= -d.dir;
     this.addFx(blood, hx, BODY_Y + this.rng.range(-14, 10));

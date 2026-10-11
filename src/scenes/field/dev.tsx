@@ -87,7 +87,7 @@ async function testAll(base: WarSetup) {
     askDuel: async () => Math.random() < 0.5,
     log: () => {},
   };
-  for (let c = 1; c <= 70; c++) {
+  for (let c = 1; c <= db.cities.length; c++) {
     try {
       const t0 = performance.now();
       const map = await loadMap(c);

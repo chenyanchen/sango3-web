@@ -2,9 +2,24 @@
 
 浏览器游戏（TypeScript + Vite + PixiJS 8 WebGL + Preact DOM UI），桌面/手机/平板通用。
 
-## 资源管线
+## 两套素材
 
-原版素材**不随源码分发**。`pnpm extract <安装包.exe | 游戏目录>` 从你自己的安装中生成 `public/assets/`（git 忽略）：
+运行时有两套布局相同的素材，由 `src/engine/assets.ts` 的 `assetMode` 选择（「游戏设定 → 游戏素材」切换，存档与自创武将按素材分开保存）：
+
+- **水墨版（默认）** `assets/`：`pnpm gen` 用代码生成的全套原创素材——美术、数据、野战地图、音乐音效，不含任何原版内容，随网站部署。
+- **原版** `assets-orig/`：玩家自己的游戏，经浏览器导入（`src/import`）或 `pnpm extract` 生成。
+
+### 生成管线（tools/gen）
+
+- `spec/`：原版素材的**结构**（目录、帧名、尺寸与锚点、动画帧序列；`pnpm gen:spec` 从 `public/assets-orig` 生成），让生成的素材与游戏代码直接兼容。不含像素、文字或数值。
+- `paint/*.ts`：画师，每个负责若干目录，把每一帧画成 SVG（`ink.ts` 提供水墨笔触、宣纸、墨晕等工具），由 sharp 栅格化后打包成图集。
+- `data/*.ts`：数据（`geo.ts` 城池与道路、`people.ts` 武将剧本事件、`rules.ts` 道具兵种武将技阵形官职……），输出与原版 INI 转换结果相同结构的 JSON。
+- `maps/*.ts`：野战地图（.blk）；`audio/*.ts`：合成的音乐与音效（MP3 由 lamejs 编码）。
+- 模块自动发现：在对应目录放一个导出约定接口的文件即可（见 `types.ts`）。`pnpm gen shapes=portrait` 只生成部分；`pnpm gen:sheet <dir> out.png` 生成预览拼图。
+
+## 原版资源管线
+
+原版素材**不随源码分发**。`pnpm extract <安装包.exe | 游戏目录>` 从你自己的安装中生成 `public/assets-orig/`（git 忽略）：
 
 | 原版 | 产物 | 说明 |
 |---|---|---|
