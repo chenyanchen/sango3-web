@@ -29,7 +29,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: CJK fonts for calligraphy in generated art
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-arphic-ukai fonts-noto-cjk >/dev/null
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends fonts-arphic-ukai >/dev/null
       - name: Cache generated assets
         id: gencache
         uses: actions/cache@v4
