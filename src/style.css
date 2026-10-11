@@ -502,3 +502,11 @@ table.grid tr.off td {
 .importer .prog .bar > i {
   background: linear-gradient(180deg, #f6d98a, #a8782a);
 }
+/* a modal replacing the one just closed (dialogue chains) appears without a fade */
+.modal-back.instant,
+.modal-back.instant .modal {
+  animation: none;
+}
+.modal-back.lingering {
+  pointer-events: none;
+}

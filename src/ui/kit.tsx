@@ -2,13 +2,13 @@
 import { render, type ComponentChildren, type CSSProperties as CSS } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { db } from '../data/db';
-import { frameDataUrl } from '../engine/assets';
+import { frameDataUrl, frameDataUrlSync } from '../engine/assets';
 import { sfx } from '../engine/audio';
 
 // ------------------------------------------------------------------ portrait
 export function Portrait(props: { general?: number; shape?: string; size?: 'sm' | 'lg'; class?: string; title?: string }) {
-  const [url, setUrl] = useState<string>('');
   const path = props.shape ?? (props.general ? `portrait/${db.generals[props.general - 1]?.portraitName}` : '');
+  const [url, setUrl] = useState<string>(() => (path && frameDataUrlSync(path)) || '');
   useEffect(() => {
     let live = true;
     if (path) frameDataUrl(path).then((u) => live && setUrl(u), () => {});
@@ -27,7 +27,7 @@ export function Portrait(props: { general?: number; shape?: string; size?: 'sm' 
 
 /** Any shape frame as an inline image (icons etc.). */
 export function ShapeImg(props: { path: string; style?: CSS; class?: string }) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(() => frameDataUrlSync(props.path) ?? '');
   useEffect(() => {
     let live = true;
     frameDataUrl(props.path).then((u) => live && setUrl(u), () => {});
@@ -83,8 +83,10 @@ export function Panel(props: { title?: ComponentChildren; children: ComponentChi
 
 // ------------------------------------------------------------------ modals
 let host: HTMLDivElement | null = null;
-const stack: { id: number; node: ComponentChildren }[] = [];
+const stack: { id: number; node: ComponentChildren; instant?: boolean }[] = [];
 let seq = 0;
+/** when the last modal closed; a modal opened right after it replaces it without a fade */
+let lastClose = -1e9;
 
 function hostEl() {
   if (!host) {
@@ -96,11 +98,16 @@ function hostEl() {
   return host;
 }
 
+/** the last modal stays painted briefly after closing, so a follow-up modal replaces it seamlessly */
+let lingering: (typeof stack)[number] | null = null;
+let lingerTimer = 0;
+
 function redraw() {
+  const shown = stack.length ? stack : lingering ? [lingering] : [];
   render(
     <>
-      {stack.map((m) => (
-        <div class="modal-back" key={m.id}>
+      {shown.map((m) => (
+        <div class={`modal-back${m.instant ? ' instant' : ''}${m === lingering && !stack.length ? ' lingering' : ''}`} key={m.id}>
           {m.node}
         </div>
       ))}
@@ -118,11 +125,25 @@ export function modal<T>(body: (close: (v: T) => void) => ComponentChildren): Pr
     const id = ++seq;
     const close = (v: T) => {
       const i = stack.findIndex((m) => m.id === id);
-      if (i >= 0) stack.splice(i, 1);
+      if (i < 0) return;
+      const [m] = stack.splice(i, 1);
+      if (!stack.length) {
+        lastClose = performance.now();
+        lingering = m;
+        clearTimeout(lingerTimer);
+        lingerTimer = window.setTimeout(() => {
+          lingering = null;
+          redraw();
+        }, 120);
+      }
       redraw();
       resolve(v);
     };
-    stack.push({ id, node: body(close) });
+    // dialogue chains (one modal per line) must not flash the scene in between
+    const instant = !stack.length && (!!lingering || performance.now() - lastClose < 120);
+    lingering = null;
+    clearTimeout(lingerTimer);
+    stack.push({ id, node: body(close), instant });
     redraw();
   });
 }

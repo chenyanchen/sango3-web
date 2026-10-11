@@ -136,6 +136,13 @@ export async function imageUrl(path: string): Promise<string> {
 }
 
 const canvasCache = new Map<string, Promise<string>>();
+const canvasReady = new Map<string, string>();
+
+/** The frameDataUrl() result if it has already been produced (for flicker-free first render). */
+export function frameDataUrlSync(path: string): string | undefined {
+  return canvasReady.get(normDir(path));
+}
+
 /**
  * Returns an object URL with a single frame cut out as PNG, for DOM UI
  * (portraits, icons). Cached.
@@ -153,7 +160,9 @@ export function frameDataUrl(path: string): Promise<string> {
       c.height = fr.height;
       c.getContext('2d')!.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, fr.width, fr.height);
       const blob = await new Promise<Blob>((res) => c.toBlob((b) => res(b!), 'image/png'));
-      return URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      canvasReady.set(path, url);
+      return url;
     })();
     const key = path;
     p.catch(() => {

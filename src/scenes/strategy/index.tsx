@@ -1,6 +1,7 @@
 // 内政 strategy map scene: China map + HUD + monthly commands + turn loop.
 import { useState } from 'preact/hooks';
 import { db } from '../../data/db';
+import { frameDataUrl } from '../../engine/assets';
 import { playMusic, sfx } from '../../engine/audio';
 import { modalKey } from '../../engine/keys';
 import { core, Scene } from '../../engine/core';
@@ -456,6 +457,9 @@ export class StrategyScene extends Scene {
 
   private async showEvent(name: string, lines: EventLine[], effect: string[]) {
     playMusic('event');
+    // load every speaker's portrait up front so lines switch without blank faces
+    const faces = lines.map((l) => (l.general ? `portrait/${db.generals[l.general - 1]?.portraitName}` : l.shape)).filter((p): p is string => !!p);
+    const preload = Promise.all(faces.map((p) => frameDataUrl(p).catch(() => ''))).then(() => undefined);
     await modal<void>((close) => (
       <Court bg={3}>
         <Panel title="历史事件" class="modal sg-say sg-event">
@@ -464,6 +468,7 @@ export class StrategyScene extends Scene {
         </Panel>
       </Court>
     ));
+    await preload;
     for (const l of lines) {
       const go = await sayShape(l.shape, l.general, l.name, l.text, 3);
       if (!go) break;
