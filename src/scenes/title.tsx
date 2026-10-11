@@ -6,7 +6,7 @@ import { core, Scene } from '../engine/core';
 import { Backdrop } from '../engine/view';
 import { listSaves, loadGame } from '../game/save';
 import { showHelp } from '../ui/help';
-import { Btn, modal, Panel, toast } from '../ui/kit';
+import { Btn, confirmBox, modal, Panel, toast } from '../ui/kit';
 import { go } from './registry';
 
 export class TitleScene extends Scene {
@@ -145,6 +145,20 @@ export function optionsBox(): Promise<void> {
           <span style={{ width: '5em' }}>全屏</span>
           <Btn onClick={() => toggleFullscreen()}>切换全屏</Btn>
         </label>
+        {import.meta.env.PROD && (
+          <label class="row">
+            <span style={{ width: '5em' }}>游戏素材</span>
+            <Btn
+              onClick={async () => {
+                if (!(await confirmBox('清除浏览器里已导入的游戏素材？下次打开需要重新选择安装包（存档不受影响）。'))) return;
+                await (await import('../import')).clearImportedAssets();
+                location.reload();
+              }}
+            >
+              清除并重新导入
+            </Btn>
+          </label>
+        )}
       </div>
       <div class="actions">
         <Btn class="primary" onClick={() => close()}>

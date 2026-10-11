@@ -22,11 +22,17 @@ const DEV: Record<string, () => Promise<{ default: () => Promise<void> | void }>
   }),
 };
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
-
 async function boot() {
+  if (import.meta.env.PROD) {
+    // The service worker serves imported assets (see src/import); without assets
+    // on the host, the player imports their own installer first.
+    const { ensureServiceWorker, hasAssets, runImport } = await import('./import');
+    const swOk = await ensureServiceWorker();
+    if (!(await hasAssets())) {
+      document.getElementById('boot')?.remove();
+      await runImport(swOk);
+    }
+  }
   await core.init();
   await loadDB();
   const dev = new URLSearchParams(location.search).get('dev');

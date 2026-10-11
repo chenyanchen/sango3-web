@@ -15,13 +15,20 @@
 | `MUSIC.PAK` | `assets/music/*.mp3` | ffmpeg 转码 |
 | `Map/MapNNN.blk` | `assets/map/mapNNN.blk` | 野战地图（原始二进制，运行时解析）|
 
+同一套转换代码（`src/extract/`，平台无关，只依赖 Uint8Array）有两个入口：
+
+- **Node CLI**（`tools/extract/main.ts`）：sharp 编码 WebP，ffmpeg 转 MP3，写入 `public/assets/`。
+- **浏览器导入**（`src/import/`）：线上站点不带素材，生产构建启动时若 `assets/version.json` 不存在，就显示导入界面。玩家选择自己的安装包或 PAK，由 Worker 池完成解包（fflate 解 MSZIP，大文件暂存 OPFS）、图像编码（OffscreenCanvas：图集 PNG、大图 WebP）和音乐转码（lamejs），结果写入 Cache Storage 的 `sg3-assets-v1`。`public/sw.js` 从这个缓存提供 `./assets/*`（支持音频 Range 请求），所以游戏代码不需要区分两种来源。`version.json` 最后写入，作为导入完成的标记。
+
 SHP 格式：`"TLHS" | 0 | type(2) | 0 | colorKey | w | h | anchorX | anchorY | rowOffset[h]`，每行 `{u16 x, u16 n, u16 rgb565[n]}* 0xFFFF`（x 为绝对列）。
 
 ## 源码结构
 
 ```
 src/
-  main.ts                 启动；?dev=<name> 进入各模块的开发测试入口
+  main.ts                 启动；?dev=<name> 进入各模块的开发测试入口；生产构建先确保素材已导入
+  extract/                原版格式解码（PAK/SHP/TGA/INI/CAB/安装包）与素材转换流程，Node 与浏览器共用
+  import/                 浏览器内导入：界面 + Worker 池（worker.ts）
   engine/
     core.ts               Pixi 应用、场景栈(go/push/pop)、固定步长循环(30Hz)、fit()
     assets.ts             shapes(dir) / shape(path) / frameDataUrl / imageUrl

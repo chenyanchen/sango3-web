@@ -1,5 +1,5 @@
 {
-  "name": "sgqyz3",
+  "name": "sango3-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,17 +12,20 @@
     "shot": "tsx tools/shot.ts"
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "fflate": "^0.8.3",
+    "maxrects-packer": "^2.7.3",
+    "opencc-js": "^1.4.2",
     "pixi.js": "^8.22.0",
     "preact": "^11.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "maxrects-packer": "^2.7.3",
-    "opencc-js": "^1.4.2",
     "playwright-core": "^1.64.0",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
-  }
+  },
+  "packageManager": "pnpm@12.10.1"
 }

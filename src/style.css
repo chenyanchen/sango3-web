@@ -431,3 +431,74 @@ table.grid tr.off td {
     padding-bottom: 0.25em;
   }
 }
+
+/* ---------------------------------------------------------------- importer (first visit) */
+.importer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(ellipse at 50% 30%, #3a2410 0%, #120904 60%, #000 100%);
+  pointer-events: auto;
+  overflow-y: auto;
+}
+.importer-box {
+  max-width: 34em;
+  width: 100%;
+  text-align: center;
+  line-height: 1.7;
+}
+.importer-box.drag {
+  outline: 2px dashed var(--gold-hi);
+  outline-offset: 6px;
+}
+.importer-box h1 {
+  margin: 0.2em 0 0;
+  font-family: var(--font-title);
+  font-size: 2.4em;
+  letter-spacing: 0.3em;
+  color: var(--gold-hi);
+}
+.importer-box .sub {
+  color: var(--ink-dim);
+  letter-spacing: 0.5em;
+  margin-bottom: 1em;
+}
+.importer-box p {
+  margin: 0.6em 0;
+  text-align: left;
+}
+.importer-box code {
+  color: var(--gold-hi);
+}
+.importer-box .small {
+  font-size: 0.85em;
+}
+.importer-box .err {
+  color: #ff8a70;
+}
+.importer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8em;
+  justify-content: center;
+  margin: 1.2em 0 0.4em;
+}
+.importer .prog {
+  margin: 1.2em 0 0.4em;
+  text-align: left;
+}
+.importer .prog .row-between {
+  display: flex;
+  justify-content: space-between;
+}
+.importer .prog .bar {
+  height: 10px;
+  margin: 0.4em 0;
+}
+.importer .prog .bar > i {
+  background: linear-gradient(180deg, #f6d98a, #a8782a);
+}
